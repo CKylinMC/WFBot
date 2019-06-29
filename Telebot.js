@@ -52,7 +52,10 @@ function doPost(e) {
   bus.on(/\/突击\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getSortie);
    
   bus.on(/\/fissures\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getFissures);
-  bus.on(/\/裂缝\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getFissures);
+  bus.on(/\/裂缝\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getFissures);getConProgress
+   
+  bus.on(/\/conprogress\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getConProgress);
+  bus.on(/\/建造进度\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getConProgress);
    
   bot.register(bus);
  
@@ -104,7 +107,7 @@ CommandBus.prototype.handle = function (bot) {
       return cmd.callback.apply(bot, tokens.splice(1));
     }
   }
-  return bot.replyToSender("Invalid command");
+  return bot.replyToSender("未知命令，尝试输入 /help 获得可使用的命令列表。");
 }
 
 Bot.prototype.request = function (method, data) {
@@ -172,6 +175,7 @@ function getStarted(){
     +"/vd | /虚空商人 : 查询虚空商人信息。\n"
     +"/sortie | /突击 : 查询每日突击信息。\n"
     +"/fissures | /裂缝 : 查询虚空裂缝信息。\n"
+    +"/conprogress | /建造进度 : 查询入侵建造进度信息。\n"
   );
 }
 
@@ -442,4 +446,33 @@ function getFissures(){
   this.replyToSender(contents);
 }
 
+//////////////////////////////////////////// 建造进度
 
+function progressToStr(progress,step,filled,unfilled){
+  if(!step) step = 5;
+  if(!filled) filled = "|";
+  if(!unfilled) unfilled = " ";
+  if(progress<0) progress = 0;
+  if(progress>100) progress = 100;
+  progress = Math.floor(progress);
+  var bar = "";
+  var max = 100/step;
+  while(progress>0){
+    progress-=step;
+    bar+=filled;
+  }
+  var uf = max-bar.length;
+  for(i=0;i<uf;i++){
+    bar+=unfilled;
+  }
+  return bar;
+}
+
+function getConProgress(){
+  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  var data = getStat();
+  var contents = "*建造进度*\n\n";
+  var dict = getWFDict();
+  contents+= "*巨人战舰*\n进度：{"+progressToStr(data.constructionProgress.fomorianProgress)+"} "+data.constructionProgress.fomorianProgress+"%\n\n*利刃豺狼*\n进度：{"+progressToStr(data.constructionProgress.razorbackProgress)+"} "+data.constructionProgress.razorbackProgress+"%";
+  this.replyToSender(contents);
+}
