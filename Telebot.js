@@ -60,6 +60,15 @@ function doPost(e) {
   bus.on(/\/darvo\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getDarvo);
   bus.on(/\/每日优惠\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getDarvo);
    
+  bus.on(/\/kuva\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getKuva);
+  bus.on(/\/赤毒\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getKuva);
+   
+  bus.on(/\/arbit\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getArbitration);
+  bus.on(/\/仲裁\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getArbitration);
+   
+  bus.on(/\/invas\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getInvasions);
+  bus.on(/\/入侵\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getInvasions);
+   
   bot.register(bus);
  
   // If the update is valid, process it
@@ -180,6 +189,9 @@ function getStarted(){
     +"/fissures | /裂缝 : 查询虚空裂缝信息。\n"
     +"/conprogress | /建造进度 : 查询入侵建造进度信息。\n"
     +"/darvo | /每日优惠 : 查询每日Darvo优惠信息。\n"
+    +"/kuva | /赤毒 : 查询当前赤毒任务信息。\n"
+    +"/arbit | /仲裁 : 查询当前仲裁任务信息。\n"
+    +"/invas | /入侵 : 查询当前入侵任务信息。\n"
   );
 }
 
@@ -197,6 +209,11 @@ function getBJTime(t){
     var d = new Date(t);
     d.setTime(d.getTime()+8*60*60*1000); 
     return d;
+}
+
+function stampToDate(s){
+  var d = getBJTime(s);
+  return "(UTC+8)"+d.getUTCFullYear()+"年"+(d.getUTCMonth()+1)+"月"+d.getUTCDate()+"日"+d.getUTCHours()+":"+d.getUTCMinutes()+":"+d.getUTCSeconds()
 }
 
 function parseTime(t){
@@ -498,4 +515,71 @@ function getDarvo(){
   this.replyToSender(contents);
 }
 
+//////////////////////////////////////////// Kuva
+
+function getKuva(){
+  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  var data = getStat();
+  var contents = "*赤毒任务*\n\n";
+  var dict = getWFDict();
+  var kuva = data.kuva;
+  kuva.forEach(function(c){ 
+    var t = getBJTime();
+    contents+= "*"+getNode(c.node,dict)+" ("+cn(c.type,dict)+")*\n - 阵营："+c.enemy+"\n - 结束："+stampToDate(c.expiry)+"\n"+(c.archwing?" - *空战任务*":"")+(c.sharkwing?" - *水下任务*":"")+"\n\n";
+  });
+  this.replyToSender(contents);
+}
+
+//////////////////////////////////////////// arbitration
+
+function getArbitration(){
+  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  var data = getStat();
+  var contents = "*仲裁任务*\n\n";
+  var dict = getWFDict();
+  var c = data.arbitration;
+  //arbitration.forEach(function(c){ 
+    contents+= "*"+getNode(c.node,dict)+" ("+cn(c.type,dict)+")*\n - 阵营："+c.enemy+"\n - 结束："+stampToDate(c.expiry)+"\n"+(c.archwing?" - *空战任务*":"")+(c.sharkwing?" - *水下任务*":"")+"\n\n";
+  //});
+  this.replyToSender(contents);
+}
+
+//////////////////////////////////////////// Invasions
+
+function getInvasions(){
+  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  var data = getStat();
+  var contents = "*入侵任务*\n\n";
+  var dict = getWFDict();
+  var Invasions = data.invasions;
+  var temprw;
+  Invasions.forEach(function(c){ 
+    if(!c.completed){
+      contents+= "*"+c.attackingFaction+" VS "+c.defendingFaction+"* "+(c.vsInfestation?"(Infestation入侵)":"")+"\n"
+       +" - 节点："+getNode(c.node,dict)+"\n"
+       +" - 进度：{"+progressToStr(c.completion)+"}\n"
+       +" - 剩余："+parseTime(c.eta)+"\n";
+      if(c.vsInfestation){
+        contents+= " - 防守奖励："+"\n";
+        temprw = c.defenderReward.countedItems;
+        temprw.forEach(function(i){
+          contents+="  > "+cn(i.type,dict)+" x"+i.count+"\n";
+        });
+      }else{
+        contents+= " - 帮助"+c.attackingFaction+"的奖励："+"\n";
+        temprw = c.attackerReward.countedItems;
+        temprw.forEach(function(i){
+          contents+="  > "+cn(i.type,dict)+" x"+i.count+"\n";
+        });
+        contents+= " - 帮助"+c.defendingFaction+"的奖励："+"\n";
+        temprw = c.defenderReward.countedItems;
+        temprw.forEach(function(i){
+          contents+="  > "+cn(i.type,dict)+" x"+i.count+"\n";
+        });
+      }
+      contents+= "\n";
+    }
+  });
+  this.replyToSender(contents);
+}
 
