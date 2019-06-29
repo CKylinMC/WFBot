@@ -51,6 +51,9 @@ function doPost(e) {
   bus.on(/\/sortie\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getSortie);
   bus.on(/\/突击\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getSortie);
    
+  bus.on(/\/fissures\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getFissures);
+  bus.on(/\/裂缝\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getFissures);
+   
   bot.register(bus);
  
   // If the update is valid, process it
@@ -168,6 +171,7 @@ function getStarted(){
     +"/nw | /午夜电波 : 查询午夜电波任务信息。\n"
     +"/vd | /虚空商人 : 查询虚空商人信息。\n"
     +"/sortie | /突击 : 查询每日突击信息。\n"
+    +"/fissures | /裂缝 : 查询虚空裂缝信息。\n"
   );
 }
 
@@ -399,5 +403,43 @@ function getSortie(){
   this.replyToSender(contents);
 }
 
+//////////////////////////////////////////// 裂缝
+
+function getTier(i){
+  var t = "";
+  switch(i){
+    case  1:
+    case "1":
+      t+= "古";
+      break;
+    case  2:
+    case "2":
+      t+= "前";
+      break;
+    case  3:
+    case "3":
+      t+= "中";
+      break;
+    case  4:
+    case "4":
+      t+= "后";
+      break;
+    default:
+      t+= "?";
+  }
+  return t+"纪";
+}
+
+function getFissures(){
+  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  var data = getStat();
+  var contents = "*虚空裂缝*\n\n";
+  var dict = getWFDict();
+  var fis = data.fissures;
+  fis.forEach(function(c){ 
+    contents+= "*("+getTier(c.tierNum)+") "+getNode(c.node,dict)+"*\n - 阵营："+c.enemy+"\n - 任务："+cn(c.missionType,dict)+"\n - 剩余："+parseTime(c.eta)+"\n\n";
+  });
+  this.replyToSender(contents);
+}
 
 
