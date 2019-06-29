@@ -1,9 +1,15 @@
-var token = 'xxx';
-var statapi = 'https://api.warframestat.us/pc';
-var nightwaveDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_NightWave.json";
-var wfDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Dict.json";
-var showMsgId = false;
-var showWaitMsg = false;
+var token = 'xxx';//机器人token
+
+var statapi = 'https://api.warframestat.us/pc';//WF状态API
+var nightwaveDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_NightWave.json";//夜波词典
+var wfDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Dict.json";//WF总词典
+var modDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Modifier.json";//突击强化词典
+
+var showMsgId = false;//测试用，功能作废，等待移除
+var showWaitMsg = false;//开启此项可以让机器人收到消息时回复等待消息。
+
+
+//////////////////////////////////////////// 不要修改下面的内容
 
 
 function doGet(){
@@ -41,6 +47,9 @@ function doPost(e) {
   bus.on(/\/虚空商人\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getVoidTrager);
   bus.on(/\/voidtrader\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getVoidTrager);
   bus.on(/\/vd\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getVoidTrager);
+   
+  bus.on(/\/sortie\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getSortie);
+  bus.on(/\/突击\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getSortie);
    
   bot.register(bus);
  
@@ -146,7 +155,7 @@ function msgID(){
   return showMsgId?"(MSGID"+getRandomKey()+")\n":"";
 }
 
-//////////////////////////////////////////// Start and help
+//////////////////////////////////////////// 开始和帮助
 function getStarted(){
 //  this.replyToSender(JSON.stringify(this.update));
   this.replyToSender(
@@ -158,6 +167,7 @@ function getStarted(){
     +"\n"
     +"/nw | /午夜电波 : 查询午夜电波任务信息。\n"
     +"/vd | /虚空商人 : 查询虚空商人信息。\n"
+    +"/sortie | /突击 : 查询每日突击信息。\n"
   );
 }
 
@@ -165,7 +175,7 @@ function getWFBotInfo(){
   this.replyToSender("*Warframe CN Bot for Telegram*\n作者：CKylinMC\n开源地址：[Cansll/WFBot](https://github.com/Cansll/WFBot) | [更新日志](https://github.com/Cansll/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
 }
 
-//////////////////////////////////////////// HELPERS
+//////////////////////////////////////////// 辅助
 
 function getStat(){
   return JSON.parse(UrlFetchApp.fetch(statapi).getContentText());
@@ -196,7 +206,7 @@ function cn(m,dict){
   else return m;
 }
 
-//////////////////////////////////////////// Cycles
+//////////////////////////////////////////// 平原信息
 
 function getCycles(){
   if(showWaitMsg)this.replyToSender("正在获取数据...");
@@ -217,7 +227,7 @@ function getCycles(){
   this.replyToSender(msg);
 }
 
-//////////////////////////////////////////// Nightwave
+//////////////////////////////////////////// 夜波
 
 function getNWDict(){
   return JSON.parse(UrlFetchApp.fetch(nightwaveDict).getContentText());;
@@ -261,7 +271,7 @@ function getNightwaves(){
   this.replyToSender(contents);
 }
 
-//////////////////////////////////////////// Baro Ki Teer
+//////////////////////////////////////////// 奸商
 
 function getWFDict(){
   return JSON.parse(UrlFetchApp.fetch(wfDict).getContentText());
@@ -309,3 +319,85 @@ function getVoidTrager(){
   }
   this.replyToSender(contents);
 }
+
+//////////////////////////////////////////// 突击
+
+function getModDict(){
+  return JSON.parse(UrlFetchApp.fetch(modDict).getContentText());
+}
+
+function sortieNum(i){
+  var t = "突击";
+  switch(i){
+    case 1:
+      t+= "一";
+      break;
+    case 2:
+      t+= "二";
+      break;
+    case 3:
+      t+= "三";
+      break;
+    default:
+      t = "未知突击";
+  }
+  return t;
+}
+
+function smcn(m,dict){
+  if(m){
+    if(!dict) dict = getModDict();
+    //if(dict) var n = dict.filter(function(a){return a.en==m})[0].zh; else var n=m;
+    try{
+      var n = dict.filter(function(a){return a.en==m})[0].zh;
+    }catch(Exception){
+      var n=m;
+      }
+    if(n) return n;
+    else return m;
+  }
+  else return m;
+}
+
+function getNode(p,dict){
+  var r = /^.+?\((.+?)\).*$/;
+  var m = r.exec(p);
+  if(m){
+    if(!dict) dict = getWFDict();
+    //if(dict) var n = dict.filter(function(a){return a.en==m[1]})[0].zh; else var n=m;
+    try{
+      var n = dict.filter(function(a){return a.en==m[1]})[0].zh;
+    }catch(Exception){
+      var n=m;
+    }
+    if(n) return n+" "+p.split(" ")[0];
+    else return m[1]+" "+p.split(" ")[0];
+  }
+  else return p;
+}
+
+function getSortie(){
+  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  var data = getStat();
+  var sortie = data.sortie;
+  
+  if(sortie.active!=true){
+    this.replyToSender("突击尚未开启。");
+    return;
+  }
+  
+  var dict = getWFDict();
+  var moddict = getModDict();
+  var eta = parseTime(sortie.eta);
+  var contents = "*每日突击*\n(剩余 "+eta+")\n\n";
+  contents+= "阵营："+sortie.faction+"\n"+"首领："+cn(sortie.boss,dict)+"\n\n";
+  var variants = sortie.variants;
+  var counter = 1;
+  variants.forEach(function(c){ 
+      contents+= "*"+sortieNum(counter++)+"*\n"+" - 强化："+smcn(c.modifier,moddict)+"\n - 节点："+getNode(c.node,dict)+"\n\n";
+  });
+  this.replyToSender(contents);
+}
+
+
+
