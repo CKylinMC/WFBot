@@ -52,10 +52,13 @@ function doPost(e) {
   bus.on(/\/突击\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getSortie);
    
   bus.on(/\/fissures\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getFissures);
-  bus.on(/\/裂缝\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getFissures);getConProgress
+  bus.on(/\/裂缝\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getFissures);
    
   bus.on(/\/conprogress\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getConProgress);
   bus.on(/\/建造进度\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getConProgress);
+   
+  bus.on(/\/darvo\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getDarvo);
+  bus.on(/\/每日优惠\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getDarvo);
    
   bot.register(bus);
  
@@ -176,6 +179,7 @@ function getStarted(){
     +"/sortie | /突击 : 查询每日突击信息。\n"
     +"/fissures | /裂缝 : 查询虚空裂缝信息。\n"
     +"/conprogress | /建造进度 : 查询入侵建造进度信息。\n"
+    +"/darvo | /每日优惠 : 查询每日Darvo优惠信息。\n"
   );
 }
 
@@ -472,7 +476,26 @@ function getConProgress(){
   if(showWaitMsg)this.replyToSender("正在获取数据...");
   var data = getStat();
   var contents = "*建造进度*\n\n";
-  var dict = getWFDict();
   contents+= "*巨人战舰*\n进度：{"+progressToStr(data.constructionProgress.fomorianProgress)+"} "+data.constructionProgress.fomorianProgress+"%\n\n*利刃豺狼*\n进度：{"+progressToStr(data.constructionProgress.razorbackProgress)+"} "+data.constructionProgress.razorbackProgress+"%";
   this.replyToSender(contents);
 }
+
+//////////////////////////////////////////// Darvo
+
+function toPercent(num, total) { 
+    return Math.round(num/total*10000)/100.00;  
+}
+
+function getDarvo(){
+  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  var data = getStat();
+  var contents = "*每日优惠*\n\n";
+  var dict = getWFDict();
+  var dd = data.dailyDeals;
+  dd.forEach(function(c){ 
+    contents+= "*"+cn(c.item,dict)+"*\n - 售价：*"+c.salePrice+"*(原价 "+c.originalPrice+","+c.discount+"%折扣)\n - 售出：{"+progressToStr(toPercent(c.sold,c.total))+"}"+c.sold+"/"+c.total+"\n - 剩余："+(c.total-c.sold)+"\n - 刷新："+parseTime(c.eta)+"后";
+  });
+  this.replyToSender(contents);
+}
+
+
