@@ -1,9 +1,14 @@
-var token = 'xxxx';
+var token = 'xxx';
 var statapi = 'https://api.warframestat.us/pc';
 var nightwaveDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_NightWave.json";
 var wfDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Dict.json";
 var showMsgId = false;
 var showWaitMsg = false;
+
+
+function doGet(){
+  return HtmlService.createHtmlOutput('<h1>Warframe TG BOT</h1><hr><a target="_blank" href="https://t.me/yorurinbot">@yorurinbot</a>');
+}
 
 
 function doPost(e) {
@@ -20,6 +25,8 @@ function doPost(e) {
   bus.on(/\/start/, getStarted);
   bus.on(/\/help/, getStarted);
   bus.on(/\/帮助/, getStarted);
+  
+  bus.on(/\/wfbotinfo/, getWFBotInfo);
    
   bus.on(/\/时间\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getCycles);
   bus.on(/\/时间播报\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getCycles);
@@ -147,18 +154,21 @@ function getStarted(){
     +"用法：\n"
     +"/help | /帮助 : 查询帮助(此消息)。\n"
     +"/time | /时间播报 : 查询平原和地球的时间和气候。\n"
+    +"/wfbotinfo : 查询机器人信息。\n"
+    +"\n"
     +"/nw | /午夜电波 : 查询午夜电波任务信息。\n"
-    +"/vd | /虚空商人 : 查询虚空商人信息(未完成)。\n"
-    +"\n\nBot developed by ShadowKylin氏族\n"
-    +"API: WarframeStat.us\n"
-    +"DICT: https://github.com/Richasy/WFA_Lexicon"
+    +"/vd | /虚空商人 : 查询虚空商人信息。\n"
   );
+}
+
+function getWFBotInfo(){
+  this.replyToSender("*Warframe CN Bot for Telegram*\n作者：CKylinMC\n开源地址：[Cansll/WFBot](https://github.com/Cansll/WFBot) | [更新日志](https://github.com/Cansll/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
 }
 
 //////////////////////////////////////////// HELPERS
 
 function getStat(){
-  return JSON.parse(UrlFetchApp.fetch(statapi).getContentText());;
+  return JSON.parse(UrlFetchApp.fetch(statapi).getContentText());
 }
 
 function getBJTime(t){
@@ -169,6 +179,21 @@ function getBJTime(t){
 
 function parseTime(t){
   return t.replace("d","天").replace("h","小时").replace("m","分钟").replace("s","秒");
+}
+
+function cn(m,dict){
+  if(m){
+    if(!dict) dict = getWFDict();
+    //if(dict) var n = dict.filter(function(a){return a.en==m})[0].zh; else var n=m;
+    try{
+      var n = dict.filter(function(a){return a.en==m})[0].zh;
+    }catch(Exception){
+      var n=m;
+      }
+    if(n) return n;
+    else return m;
+  }
+  else return m;
 }
 
 //////////////////////////////////////////// Cycles
@@ -198,6 +223,21 @@ function getNWDict(){
   return JSON.parse(UrlFetchApp.fetch(nightwaveDict).getContentText());;
 }
 
+function nwcn(m,dict){
+  if(m){
+    if(!dict) dict = getNWDict();
+    //if(dict) var n = dict.filter(function(a){return a.en==m})[0].zh; else var n=m;
+    try{
+      var n = dict.filter(function(a){return a.en==m})[0].zh;
+    }catch(Exception){
+      var n=m;
+      }
+    if(n) return n;
+    else return m;
+  }
+  else return m;
+}
+
 function getNightwaves(){
   if(showWaitMsg)this.replyToSender("正在获取数据...");
   var dict = getNWDict();
@@ -210,8 +250,8 @@ function getNightwaves(){
     +d.getUTCFullYear()+"年"+(d.getUTCMonth()+1)+"月"+d.getUTCDate()+"日"+d.getUTCHours()+":"+d.getUTCMinutes()+":"+d.getUTCSeconds()+"\n任务内容："
     nwc.forEach(function(c){
     t = getBJTime(c.expiry);
-    contents+= "\n\n+ *"+c.title+"* ("+(c.isDaily?"每日":"每周")+(c.isElite?"精英":"日常")+")\n"
-              +dict.filter(function(a){return a.en==c.desc})[0].zh
+    contents+= "\n\n+ *"+nwcn(c.title,dict)+"* ("+(c.isDaily?"每日":"每周")+(c.isElite?"精英":"日常")+")\n"
+              +nwcn(c.desc,dict)
               +"\n*回报：*"+c.reputation
               +"\n*截止：*"+t.getUTCFullYear()+"年"+(t.getUTCMonth()+1)+"月"+t.getUTCDate()+"日"+t.getUTCHours()+":"+t.getUTCMinutes()+":"+t.getUTCSeconds();
     });
@@ -224,7 +264,7 @@ function getNightwaves(){
 //////////////////////////////////////////// Baro Ki Teer
 
 function getWFDict(){
-  return JSON.parse(UrlFetchApp.fetch(wfDict).getContentText());;
+  return JSON.parse(UrlFetchApp.fetch(wfDict).getContentText());
 }
 
 function getVTPoint(p,dict){
@@ -232,7 +272,12 @@ function getVTPoint(p,dict){
   var m = r.exec(p);
   if(m){
     if(!dict) dict = getWFDict();
-    var n = dict.filter(function(a){return a.en==m[1]})[0].zh
+    //if(dict) var n = dict.filter(function(a){return a.en==m[1]})[0].zh; else var n=m;
+    try{
+      var n = dict.filter(function(a){return a.en==m[1]})[0].zh;
+    }catch(Exception){
+      var n=m;
+    }
     if(n) return n;
     else return m[1];
   }
@@ -247,11 +292,15 @@ function getVoidTrager(){
   var contents = "*虚空商人*("+(vd.active?"已到达":"未到达")+")";
   contents+= "\n\n目标节点："+getVTPoint(vd.location,dict)+"中继站";
   if(vd.active){
+    var inv = vd.inventory;
     var d = getBJTime(vd.expiry);
     contents+= "\n\n离开时间：\n"
     +d.getUTCFullYear()+"年"+(d.getUTCMonth()+1)+"月"+d.getUTCDate()+"日"+d.getUTCHours()+":"+d.getUTCMinutes()+":"+d.getUTCSeconds()
     +"\n("+parseTime(vd.endString)+" 后)";
-    contents+= "\n\n携带物品：\n(开发中...)";
+    contents+= "\n\n携带物品：\n\n";
+    inv.forEach(function(c){ 
+      contents+= "*"+cn(c.item,dict)+"*\n - 杜卡德金币："+c.ducats+"\n - 现金："+c.credits+"\n\n";
+    });
   }else{
     var d = getBJTime(vd.activation);
     contents+= "\n\n到达时间：\n"
