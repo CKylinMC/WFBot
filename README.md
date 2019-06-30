@@ -18,6 +18,9 @@ API来自[WarframeStat.us API](https://api.warframestat.us/pc)，词典来自[Ri
 * /kuva - 查询当前赤毒任务
 * /arbit - 查询当前仲裁任务 
 * /invas - 查询当前入侵任务
+* /wm <物品> - 查询物品的WM市场价格统计
+* /price <物品> - 查询物品的WM市场价格
+* /drop <物品> - 查询物品的掉落信息
 
 ## 选项
 
