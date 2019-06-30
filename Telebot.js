@@ -22,6 +22,8 @@ var wfDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Di
 var modDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Modifier.json";//突击强化词典
 var wmDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Sale.json";//WF可售卖物品词典
 var wmapi = "https://api.warframe.market/v1/items/%item%/statistics";//WM数据接口
+var wmorderapi = "https://api.warframe.market/v1/items/%item%/orders";//WM数据接口
+var wmitemapi = "https://api.warframe.market/v1/items/%item%";//WM数据接口
 
 // 配置到此为止
 
@@ -41,7 +43,7 @@ function Dev_TestEntry(){
   Logger.log("[INFO] Started.")
   
   // 测试代码
-  getWMData("ash prime set");
+  getDrops("ash prime 蓝图");
   
   Logger.log("[INFO] Stopped.")
 }
@@ -112,6 +114,10 @@ function doPost(e) {
   bus.on(/\/入侵/, getInvasions);
    
   bus.on(/\/wm\s*([\sA-Za-z0-9_\u4e00-\u9fa5]+)?/, getWMData);
+   
+  bus.on(/\/price\s*([\sA-Za-z0-9_\u4e00-\u9fa5]+)?/, getPrice);
+   
+  bus.on(/\/drop\s*([\sA-Za-z0-9_\u4e00-\u9fa5]+)?/, getDrops);
    
   bot.register(bus);
  
@@ -232,7 +238,9 @@ function getStarted(){
     +"/arbit | /仲裁 : 查询当前仲裁任务信息。\n"
     +"/invas | /入侵 : 查询当前入侵任务信息。\n"
     +"\n"
-    +"/wm <物品> : 查询物品的WM市场均价。\n"
+    +"/wm <物品> : 查询物品的WM市场价格统计。\n"
+    +"/price <物品> : 查询物品的WM价格。\n"
+    +"/drop <物品> : 查询物品的掉落信息。\n"
   );
 }
 
@@ -466,18 +474,22 @@ function getSortie(){
 function getTier(i){
   var t = "";
   switch(i){
+    case "Lith":
     case  1:
     case "1":
       t+= "古";
       break;
+    case "Meso":
     case  2:
     case "2":
       t+= "前";
       break;
+    case "Neo":
     case  3:
     case "3":
       t+= "中";
       break;
+    case "Axi":
     case  4:
     case "4":
       t+= "后";
@@ -626,13 +638,46 @@ function getWMApi(item){
   return JSON.parse(UrlFetchApp.fetch(wmapi.replace("%item%",item)).getContentText());
 }
 
+function getWMItemApi(item){
+  return JSON.parse(UrlFetchApp.fetch(wmitemapi.replace("%item%",item)).getContentText());
+}
+
+function getWMOrderApi(item){
+  return JSON.parse(UrlFetchApp.fetch(wmorderapi.replace("%item%",item)).getContentText());
+}
+
+function getFPlace(str){
+  str =  str.toLowerCase();
+  var i = "";
+  switch(str){
+    case "uncommon":
+      i+= "银";
+      break;
+    case "rare":
+      i+= "金";
+      break;
+    case "common":
+      i+= "铜";
+      break;
+  }
+  i+= "部件";
+  return i;
+}
+
+function parseHT(str){
+  var arr = str.split(" ");
+  if(arr.length<3) return str;
+  var text = getTier(arr[0])+" "+arr[1]+" "+getFPlace(arr[2]);
+  return text;
+}
+
 function getSaleItem(item,dict){
   if(!dict) dict = getSaleDict();
   try{
     var res = dict.filter(function(a){return a.zh==item})[0];
-    if(!res) var res = dict.filter(function(a){return a.en==item})[0];
+    if(!res) res = dict.filter(function(a){return a.en==item})[0];
   }catch(Exception){
-      var res = dict.filter(function(a){return a.en==item})[0];
+      res = dict.filter(function(a){return a.en==item})[0];
   }
   if(!res) return false;
   return res;
@@ -662,6 +707,51 @@ function guess(str,dict,max){
   return arr;
 }
 
+function parseWM(item){
+  var res = UrlFetchApp.fetch("https://warframe.market/items/"+item);
+  if(res.getResponseCode()!=200){
+    if(res.getResponseCode()==404){
+      return "在WM市场中未能找到此物品。";
+    }
+    return "WM市场未能返回正确的数据。";
+  }
+  var page = res.getContentText();
+  var datastr = page.split("<meta name=\"description\" content=\"")[1].split(" | All trading")[0];
+  var price = datastr.split("ce: ")[1].split(" | ")[0];
+  var volume = datastr.split("me: ")[1];
+  return "+ *参考价格：*"+price+"\n+ *交易数量：*"+volume;
+}
+
+function getPrice(item){
+  if(showWaitMsg)reply(this,"正在获取数据...");
+  if(!item||item==""){
+    reply(this,"*WM查询(Beta)*\n需要指定物品。\n用法：`/price <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+    return;
+  }
+  item = item.toUpperCase();
+  var wmDict = getSaleDict();
+  var res = getSaleItem(item,wmDict);
+  if(res==false){
+    var o = guess(item,wmDict);
+    if(o.length==0) reply(this,"*WM查询(Beta)*\n查询："+item+"\n没有这条词条。\n用法：`/price <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+    else{
+      var contents = "*WM查询(Beta)*\n查询："+item+"\n没有这条词条。\n\n您输入的或许是这些中的一个？\n";
+      o.forEach(function(oi){
+        contents+= " + `"+oi+"`\n";
+      });
+      contents+= "\n请使用`/price [上面内容的完整字符]`命令进行查询，长按上面的字符可以进行复制。";
+      reply(this,contents);
+    }
+    return;
+  }
+  var contents =  "*WM查询(Beta)*\n";
+  contents+= "查询："+res.zh+"\n";
+  contents+= "英文："+res.en+"\n\n";
+  contents+= parseWM(res.search);
+  contents+= "\n\nWM市场链接：["+res.en+" | Warframe Market](https://warframe.market/items/"+res.search+")";
+  reply(this,contents);
+}
+
 function getWMData(item){
   if(showWaitMsg)reply(this,"正在获取数据...");
   if(!item||item==""){
@@ -684,7 +774,7 @@ function getWMData(item){
     }
     return;
   }
-  var contents = "*"+res.zh+"*\n";
+  var contents = "*WM查询(Beta)*\n查询："+res.zh+"\n";
   contents+= "英文："+res.en+"\n\n";
   try{
     var wmdata = getWMApi(res.search);
@@ -733,8 +823,68 @@ function getWMData(item){
     }
   });
   
-  contents+= "**购买数据**\n* 最新期望价格："+buy_wa_price+"\n* 最新平均价格："+buy_avg_price+"\n* 48小时最高价格："+buy_max_price+"\n* 48小时最低价格："+buy_min_price+"\n\n";
-  contents+= "**卖出数据**\n* 最新期望价格："+sell_wa_price+"\n* 最新平均价格："+sell_avg_price+"\n* 48小时最高价格："+sell_max_price+"\n* 48小时最低价格："+sell_min_price+"\n\n";
+  contents+= "**购买数据**\n+ *最新期望价格：*"+buy_wa_price+"\n+ *最新平均价格：*"+buy_avg_price+"\n+ *48小时最高价格：*"+buy_max_price+"\n+ *48小时最低价格：*"+buy_min_price+"\n\n";
+  contents+= "**卖出数据**\n+ *最新期望价格：*"+sell_wa_price+"\n+ *最新平均价格：*"+sell_avg_price+"\n+ *48小时最高价格：*"+sell_max_price+"\n+ *48小时最低价格：*"+sell_min_price+"\n\n";
   contents+= "WM市场链接：["+res.en+" | Warframe Market](https://warframe.market/items/"+res.search+")";
   reply(this,contents);
 }
+
+function getDrops(item){
+  if(showWaitMsg)reply(this,"正在获取数据...");
+  if(!item||item==""){
+    reply(this,"*掉落查询(Beta)*\n需要指定物品。\n用法：`/drop <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+    return;
+  }
+  item = item.toUpperCase();
+  var wmDict = getSaleDict();
+  var res = getSaleItem(item,wmDict);
+  if(res==false){
+    var o = guess(item,wmDict);
+    if(o.length==0) reply(this,"*物品信息查询(Beta)*\n查询："+item+"\n没有这条词条。\n用法：`/drop <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+    else{
+      var contents = "*物品信息查询(Beta)*\n查询："+item+"\n没有这条词条。\n\n您输入的或许是这些中的一个？\n";
+      o.forEach(function(oi){
+        contents+= " + `"+oi+"`\n";
+      });
+      contents+= "\n请使用`/drop [上面内容的完整字符]`命令进行查询，长按上面的字符可以进行复制。";
+      reply(this,contents);
+    }
+    return;
+  }
+  var contents = "*物品信息查询(Beta)*\n查询："+res.zh+"\n";
+  contents+= "英文："+res.en+"\n";
+  try{
+    var wmdata = getWMItemApi(res.search);
+  }catch(Exception){
+    contents+= "WM查询失败。";
+    reply(this,contents);
+    return;
+  }
+  
+  var wantedData = res.en;
+  var data = wmdata.payload.item.items_in_set;
+  var other = [];
+  data.forEach(function (a){
+    if(a.en.item_name.toUpperCase()==wantedData){
+      contents+= "\n+ *交易税额：*"+a.trading_tax;
+      if(a.zh.drop.length!=0){
+        contents+= "\n+ *遗物掉落：*";
+        a.zh.drop.forEach(function(b){
+          contents+= "\n   > "+parseHT(b.name);
+        });
+      }else{
+        contents+= "\n+ 暂无掉落或需要合成。";
+      }
+    }else{
+      other.push(getSaleItem(a.en.item_name.toUpperCase(),wmDict).zh);
+    }
+  });
+  if(other){
+    contents+= "\n\n+ *你可能还想看：*";
+    other.forEach(function(c){
+      contents+= "\n  > `"+c+"`";
+    });
+  }
+  
+  contents+= "\n\nWM市场链接：["+res.en+" | Warframe Market](https://warframe.market/items/"+res.search+")";
+  reply(this,contents);}
