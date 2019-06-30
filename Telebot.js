@@ -399,8 +399,8 @@ function getNode(p,dict){
     }catch(Exception){
       var n=m;
     }
-    if(n) return n+" "+p.split(" ")[0];
-    else return m[1]+" "+p.split(" ")[0];
+    if(n) return n+" "+p.split(" (")[0];
+    else return m[1]+" "+p.split(" (")[0];
   }
   else return p;
 }
