@@ -1,32 +1,74 @@
-var token = 'xxx';//机器人token
+// 请修改以下选项以符合你的要求
 
+// 设置TelegramBot的Token
+var token = 'xxx';
+
+// 有的时候机器人需要收集的数据比较多，相应可能会缓慢。
+// 开启此项可以让机器人收到消息时回复等待消息。
+var showWaitMsg = true;
+
+// 启用手动设置时区功能
+// 建议开启此功能。
+var usetimezone = true;
+
+// 配合手动设置时区功能
+// UTC+? (默认：Asia/Shanghai UTC+8)
+var utc = 8;
+
+// 数据接口设置，如果其中有失效您可以自行替换。
 var statapi = 'https://api.warframestat.us/pc';//WF状态API
 var nightwaveDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_NightWave.json";//夜波词典
 var wfDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Dict.json";//WF总词典
 var modDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Modifier.json";//突击强化词典
+var wmDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Sale.json";//WF可售卖物品词典
+var wmapi = "https://api.warframe.market/v1/items/%item%/statistics";//WM数据接口
 
-var showMsgId = false;//测试用，功能作废，等待移除
-var showWaitMsg = false;//开启此项可以让机器人收到消息时回复等待消息。
+// 配置到此为止
 
+// 测试代码，默认输出到Logger
+// 不影响发布后效果
+var loggerMode = true;
 
-//////////////////////////////////////////// 不要修改下面的内容
-
-
+// 直接访问时显示的内容，虽然一般情况下不应该出现此情况。
 function doGet(){
   return HtmlService.createHtmlOutput('<h1>Warframe TG BOT</h1><hr><a target="_blank" href="https://t.me/yorurinbot">@yorurinbot</a>');
 }
 
+//////////////////////////////////////////// 不要修改下面的内容
+
+// 测试用函数
+function Dev_TestEntry(){
+  Logger.log("[INFO] Started.")
+  
+  // 测试代码
+  getWMData("ash prime set");
+  
+  Logger.log("[INFO] Stopped.")
+}
+
+function reply(e,text){
+  if(loggerMode){
+    Logger.log("[MSG] "+text);
+    return;
+  }
+  e.replyToSender(text);
+}
 
 function doPost(e) {
- // Make sure to only reply to json requests
+ // 自动禁用测试模式
+ loggerMode = false;
+  
+ // 只响应JSON请求
  if(e.postData.type == "application/json") {
  
-  // Parse the update sent from Telegram
+  // 解析数据
   var update = JSON.parse(e.postData.contents);
 
-// Instantiate the bot passing the update 
+  // 初始化 
   var bot = new Bot(token, update);
   var bus = new CommandBus();
+  
+  // 注册命令
    
   bus.on(/\/start/, getStarted);
   bus.on(/\/help/, getStarted);
@@ -34,44 +76,46 @@ function doPost(e) {
   
   bus.on(/\/wfbotinfo/, getWFBotInfo);
    
-  bus.on(/\/时间\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getCycles);
-  bus.on(/\/时间播报\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getCycles);
-  bus.on(/\/time\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getCycles);
+  bus.on(/\/时间/, getCycles);
+  bus.on(/\/时间播报/, getCycles);
+  bus.on(/\/time/, getCycles);
    
-  bus.on(/\/夜波\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getNightwaves);
-  bus.on(/\/午夜电波\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getNightwaves);
-  bus.on(/\/nightwave\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getNightwaves);
-  bus.on(/\/nw\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getNightwaves);
+  bus.on(/\/夜波/, getNightwaves);
+  bus.on(/\/午夜电波/, getNightwaves);
+  bus.on(/\/nightwave/, getNightwaves);
+  bus.on(/\/nw/, getNightwaves);
    
-  bus.on(/\/奸商\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getVoidTrager);
-  bus.on(/\/虚空商人\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getVoidTrager);
-  bus.on(/\/voidtrader\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getVoidTrager);
-  bus.on(/\/vd\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getVoidTrager);
+  bus.on(/\/奸商/, getVoidTrager);
+  bus.on(/\/虚空商人/, getVoidTrager);
+  bus.on(/\/voidtrader/, getVoidTrager);
+  bus.on(/\/vd/, getVoidTrager);
    
-  bus.on(/\/sortie\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getSortie);
-  bus.on(/\/突击\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getSortie);
+  bus.on(/\/sortie/, getSortie);
+  bus.on(/\/突击/, getSortie);
    
-  bus.on(/\/fissures\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getFissures);
-  bus.on(/\/裂缝\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getFissures);
+  bus.on(/\/fissures/, getFissures);
+  bus.on(/\/裂缝/, getFissures);
    
-  bus.on(/\/conprogress\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getConProgress);
-  bus.on(/\/建造进度\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getConProgress);
+  bus.on(/\/conprogress/, getConProgress);
+  bus.on(/\/建造进度/, getConProgress);
    
-  bus.on(/\/darvo\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getDarvo);
-  bus.on(/\/每日优惠\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getDarvo);
+  bus.on(/\/darvo/, getDarvo);
+  bus.on(/\/每日优惠/, getDarvo);
    
-  bus.on(/\/kuva\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getKuva);
-  bus.on(/\/赤毒\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getKuva);
+  bus.on(/\/kuva/, getKuva);
+  bus.on(/\/赤毒/, getKuva);
    
-  bus.on(/\/arbit\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getArbitration);
-  bus.on(/\/仲裁\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getArbitration);
+  bus.on(/\/arbit/, getArbitration);
+  bus.on(/\/仲裁/, getArbitration);
    
-  bus.on(/\/invas\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getInvasions);
-  bus.on(/\/入侵\s*([A-Za-z0–9_]+)?\s*([A-Za-z0–9_]+)?/, getInvasions);
+  bus.on(/\/invas/, getInvasions);
+  bus.on(/\/入侵/, getInvasions);
+   
+  bus.on(/\/wm\s*([\sA-Za-z0-9_\u4e00-\u9fa5]+)?/, getWMData);
    
   bot.register(bus);
  
-  // If the update is valid, process it
+  // 执行处理
   if (update) {
    bot.process();
   }
@@ -126,7 +170,7 @@ Bot.prototype.request = function (method, data) {
  var options = {
   'method' : 'post',
   'contentType': 'application/json',
-  // Convert the JavaScript object to a JSON string.
+  // 转换JS对象为Json
   'payload' : JSON.stringify(data)
  };
  
@@ -145,13 +189,13 @@ Bot.prototype.replyToSender = function (text) {
   'chat_id': "@"+this.update.message.chat.username,
   'parse_mode': "Markdown",
   'reply_to_message_id':this.update.message.chat.id,
-  'text': msgID()+text
+  'text': text
  });
   }else{
  return this.request('sendMessage', {
   'chat_id': this.update.message.from.id,
   'parse_mode': "Markdown",
-  'text': msgID()+text
+  'text': text
  });
   }
 }
@@ -169,14 +213,9 @@ function getRandomKey(){
   return Math.floor(Math.random()*10000);
 }
 
-function msgID(){
-  return showMsgId?"(MSGID"+getRandomKey()+")\n":"";
-}
-
 //////////////////////////////////////////// 开始和帮助
 function getStarted(){
-//  this.replyToSender(JSON.stringify(this.update));
-  this.replyToSender(
+  reply(this,
     "*欢迎使用 Warframe 信息查询BOT！*\n\n"
     +"用法：\n"
     +"/help | /帮助 : 查询帮助(此消息)。\n"
@@ -192,11 +231,13 @@ function getStarted(){
     +"/kuva | /赤毒 : 查询当前赤毒任务信息。\n"
     +"/arbit | /仲裁 : 查询当前仲裁任务信息。\n"
     +"/invas | /入侵 : 查询当前入侵任务信息。\n"
+    +"\n"
+    +"/wm <物品> : 查询物品的WM市场均价。\n"
   );
 }
 
 function getWFBotInfo(){
-  this.replyToSender("*Warframe CN Bot for Telegram*\n作者：CKylinMC\n开源地址：[Cansll/WFBot](https://github.com/Cansll/WFBot) | [更新日志](https://github.com/Cansll/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
+  reply(this,"*Warframe CN Bot for Telegram*\n作者：CKylinMC\n开源地址：[Cansll/WFBot](https://github.com/Cansll/WFBot) | [更新日志](https://github.com/Cansll/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
 }
 
 //////////////////////////////////////////// 辅助
@@ -205,19 +246,19 @@ function getStat(){
   return JSON.parse(UrlFetchApp.fetch(statapi).getContentText());
 }
 
-function getBJTime(t){
+function getTimeObj(t){
     var d = new Date(t);
-    d.setTime(d.getTime()+8*60*60*1000); 
+    if(usetimezone) d.setTime(d.getTime()+utc*60*60*1000); 
     return d;
 }
 
 function stampToDate(s){
-  var d = getBJTime(s);
-  return "(UTC+8)"+d.getUTCFullYear()+"年"+(d.getUTCMonth()+1)+"月"+d.getUTCDate()+"日"+d.getUTCHours()+":"+d.getUTCMinutes()+":"+d.getUTCSeconds()
+  var d = getTimeObj(s);
+  return (usetimezone?"(UTC+"+utc+")":"")+d.getUTCFullYear()+"年"+(d.getUTCMonth()+1)+"月"+d.getUTCDate()+"日"+d.getUTCHours()+":"+d.getUTCMinutes()+":"+d.getUTCSeconds()
 }
 
 function parseTime(t){
-  return t.replace("d","天").replace("h","小时").replace("m","分钟").replace("s","秒");
+  return t.replace("d","天").replace("h","小时").replace("m","分钟").replace("s","秒").replace("Infinty","无限");
 }
 
 function cn(m,dict){
@@ -229,8 +270,7 @@ function cn(m,dict){
     }catch(Exception){
       var n=m;
       }
-    if(n) return n;
-    else return m;
+    return n;
   }
   else return m;
 }
@@ -238,12 +278,11 @@ function cn(m,dict){
 //////////////////////////////////////////// 平原信息
 
 function getCycles(){
-  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  if(showWaitMsg)reply(this,"正在获取数据...");
   var data = getStat();
-  var d = getBJTime(data.timestamp);
   var msg = "时间播报:\n\n"
-    +"查询时间：(UTC+8)\n"
-    +d.getUTCFullYear()+"年"+(d.getUTCMonth()+1)+"月"+d.getUTCDate()+"日"+d.getUTCHours()+":"+d.getUTCMinutes()+":"+d.getUTCSeconds()+"\n\n"
+    +"查询时间：\n"
+    +stampToDate(data.timestamp)+"\n\n"
     +"*地球*\n"
     +"- 当前："+(data.earthCycle.isDay?"白天":"夜晚")+"\n"
     +"- 距离切换："+parseTime(data.earthCycle.timeLeft)+"\n\n"
@@ -253,7 +292,7 @@ function getCycles(){
     +"*福尔图纳*\n"
     +"- 当前："+(data.vallisCycle.isWarm?"温暖":"寒冷")+"\n"
     +"- 距离切换："+parseTime(data.vallisCycle.timeLeft)+"\n\n";
-  this.replyToSender(msg);
+  reply(this,msg);
 }
 
 //////////////////////////////////////////// 夜波
@@ -271,33 +310,30 @@ function nwcn(m,dict){
     }catch(Exception){
       var n=m;
       }
-    if(n) return n;
-    else return m;
+    return n;
   }
   else return m;
 }
 
 function getNightwaves(){
-  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  if(showWaitMsg)reply(this,"正在获取数据...");
   var dict = getNWDict();
   var data = getStat();
   var nwc = data.nightwave.activeChallenges;
   var contents = "*夜波：*";
   if(data.nightwave.active){
-    var d = getBJTime(data.nightwave.expiry);
-    contents+= "\n结束时间：(UTC+8)\n"
-    +d.getUTCFullYear()+"年"+(d.getUTCMonth()+1)+"月"+d.getUTCDate()+"日"+d.getUTCHours()+":"+d.getUTCMinutes()+":"+d.getUTCSeconds()+"\n任务内容："
+    contents+= "\n结束时间：\n"
+    +stampToDate(data.nightwave.expiry)+"\n任务内容："
     nwc.forEach(function(c){
-    t = getBJTime(c.expiry);
     contents+= "\n\n+ *"+nwcn(c.title,dict)+"* ("+(c.isDaily?"每日":"每周")+(c.isElite?"精英":"日常")+")\n"
               +nwcn(c.desc,dict)
               +"\n*回报：*"+c.reputation
-              +"\n*截止：*"+t.getUTCFullYear()+"年"+(t.getUTCMonth()+1)+"月"+t.getUTCDate()+"日"+t.getUTCHours()+":"+t.getUTCMinutes()+":"+t.getUTCSeconds();
+              +"\n*截止：*"+stampToDate(c.expiry);
     });
   }else
     contents+= "未开放。";
   
-  this.replyToSender(contents);
+  reply(this,contents);
 }
 
 //////////////////////////////////////////// 奸商
@@ -315,16 +351,15 @@ function getVTPoint(p,dict){
     try{
       var n = dict.filter(function(a){return a.en==m[1]})[0].zh;
     }catch(Exception){
-      var n=m;
+      var n=m[1];
     }
-    if(n) return n;
-    else return m[1];
+    return n;
   }
   else return p;
 }
 
 function getVoidTrager(){
-  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  if(showWaitMsg)reply(this,"正在获取数据...");
   var data = getStat();
   var dict = getWFDict();
   var vd = data.voidTrader
@@ -332,21 +367,19 @@ function getVoidTrager(){
   contents+= "\n\n目标节点："+getVTPoint(vd.location,dict)+"中继站";
   if(vd.active){
     var inv = vd.inventory;
-    var d = getBJTime(vd.expiry);
     contents+= "\n\n离开时间：\n"
-    +d.getUTCFullYear()+"年"+(d.getUTCMonth()+1)+"月"+d.getUTCDate()+"日"+d.getUTCHours()+":"+d.getUTCMinutes()+":"+d.getUTCSeconds()
+    +stampToDate(vd.expiry)
     +"\n("+parseTime(vd.endString)+" 后)";
     contents+= "\n\n携带物品：\n\n";
     inv.forEach(function(c){ 
       contents+= "*"+cn(c.item,dict)+"*\n - 杜卡德金币："+c.ducats+"\n - 现金："+c.credits+"\n\n";
     });
   }else{
-    var d = getBJTime(vd.activation);
     contents+= "\n\n到达时间：\n"
-    +d.getUTCFullYear()+"年"+(d.getUTCMonth()+1)+"月"+d.getUTCDate()+"日"+d.getUTCHours()+":"+d.getUTCMinutes()+":"+d.getUTCSeconds()
+    +stampToDate(vd.activation)
     +"\n("+parseTime(vd.startString)+" 后)";
   }
-  this.replyToSender(contents);
+  reply(this,contents);
 }
 
 //////////////////////////////////////////// 突击
@@ -406,12 +439,12 @@ function getNode(p,dict){
 }
 
 function getSortie(){
-  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  if(showWaitMsg)reply(this,"正在获取数据...");
   var data = getStat();
   var sortie = data.sortie;
   
   if(sortie.active!=true){
-    this.replyToSender("突击尚未开启。");
+    reply(this,"突击尚未开启。");
     return;
   }
   
@@ -425,7 +458,7 @@ function getSortie(){
   variants.forEach(function(c){ 
       contents+= "*"+sortieNum(counter++)+"*\n"+" - 强化："+smcn(c.modifier,moddict)+"\n - 节点："+getNode(c.node,dict)+"\n\n";
   });
-  this.replyToSender(contents);
+  reply(this,contents);
 }
 
 //////////////////////////////////////////// 裂缝
@@ -456,7 +489,7 @@ function getTier(i){
 }
 
 function getFissures(){
-  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  if(showWaitMsg)reply(this,"正在获取数据...");
   var data = getStat();
   var contents = "*虚空裂缝*\n\n";
   var dict = getWFDict();
@@ -464,7 +497,7 @@ function getFissures(){
   fis.forEach(function(c){ 
     contents+= "*("+getTier(c.tierNum)+") "+getNode(c.node,dict)+"*\n - 阵营："+c.enemy+"\n - 任务："+cn(c.missionType,dict)+"\n - 剩余："+parseTime(c.eta)+"\n\n";
   });
-  this.replyToSender(contents);
+  reply(this,contents);
 }
 
 //////////////////////////////////////////// 建造进度
@@ -490,11 +523,11 @@ function progressToStr(progress,step,filled,unfilled){
 }
 
 function getConProgress(){
-  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  if(showWaitMsg)reply(this,"正在获取数据...");
   var data = getStat();
   var contents = "*建造进度*\n\n";
   contents+= "*巨人战舰*\n进度：{"+progressToStr(data.constructionProgress.fomorianProgress)+"} "+data.constructionProgress.fomorianProgress+"%\n\n*利刃豺狼*\n进度：{"+progressToStr(data.constructionProgress.razorbackProgress)+"} "+data.constructionProgress.razorbackProgress+"%";
-  this.replyToSender(contents);
+  reply(this,contents);
 }
 
 //////////////////////////////////////////// Darvo
@@ -504,7 +537,7 @@ function toPercent(num, total) {
 }
 
 function getDarvo(){
-  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  if(showWaitMsg)reply(this,"正在获取数据...");
   var data = getStat();
   var contents = "*每日优惠*\n\n";
   var dict = getWFDict();
@@ -512,28 +545,28 @@ function getDarvo(){
   dd.forEach(function(c){ 
     contents+= "*"+cn(c.item,dict)+"*\n - 售价：*"+c.salePrice+"*(原价 "+c.originalPrice+","+c.discount+"%折扣)\n - 售出：{"+progressToStr(toPercent(c.sold,c.total))+"}"+c.sold+"/"+c.total+"\n - 剩余："+(c.total-c.sold)+"\n - 刷新："+parseTime(c.eta)+"后";
   });
-  this.replyToSender(contents);
+  reply(this,contents);
 }
 
 //////////////////////////////////////////// Kuva
 
 function getKuva(){
-  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  if(showWaitMsg)reply(this,"正在获取数据...");
   var data = getStat();
   var contents = "*赤毒任务*\n\n";
   var dict = getWFDict();
   var kuva = data.kuva;
   kuva.forEach(function(c){ 
-    var t = getBJTime();
+    var t = getTimeObj();
     contents+= "*"+getNode(c.node,dict)+" ("+cn(c.type,dict)+")*\n - 阵营："+c.enemy+"\n - 结束："+stampToDate(c.expiry)+"\n"+(c.archwing?" - *空战任务*":"")+(c.sharkwing?" - *水下任务*":"")+"\n\n";
   });
-  this.replyToSender(contents);
+  reply(this,contents);
 }
 
 //////////////////////////////////////////// arbitration
 
 function getArbitration(){
-  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  if(showWaitMsg)reply(this,"正在获取数据...");
   var data = getStat();
   var contents = "*仲裁任务*\n\n";
   var dict = getWFDict();
@@ -541,13 +574,13 @@ function getArbitration(){
   //arbitration.forEach(function(c){ 
     contents+= "*"+getNode(c.node,dict)+" ("+cn(c.type,dict)+")*\n - 阵营："+c.enemy+"\n - 结束："+stampToDate(c.expiry)+"\n"+(c.archwing?" - *空战任务*":"")+(c.sharkwing?" - *水下任务*":"")+"\n\n";
   //});
-  this.replyToSender(contents);
+  reply(this,contents);
 }
 
 //////////////////////////////////////////// Invasions
 
 function getInvasions(){
-  if(showWaitMsg)this.replyToSender("正在获取数据...");
+  if(showWaitMsg)reply(this,"正在获取数据...");
   var data = getStat();
   var contents = "*入侵任务*\n\n";
   var dict = getWFDict();
@@ -580,6 +613,128 @@ function getInvasions(){
       contents+= "\n";
     }
   });
-  this.replyToSender(contents);
+  reply(this,contents);
 }
 
+//////////////////////////////////////////// WM数据
+
+function getSaleDict(){
+  return JSON.parse(UrlFetchApp.fetch(wmDict).getContentText());
+}
+
+function getWMApi(item){
+  return JSON.parse(UrlFetchApp.fetch(wmapi.replace("%item%",item)).getContentText());
+}
+
+function getSaleItem(item,dict){
+  if(!dict) dict = getSaleDict();
+  try{
+    var res = dict.filter(function(a){return a.zh==item})[0];
+    if(!res) var res = dict.filter(function(a){return a.en==item})[0];
+  }catch(Exception){
+      var res = dict.filter(function(a){return a.en==item})[0];
+  }
+  if(!res) return false;
+  return res;
+}
+
+function guess(str,dict,max){
+  if(!dict) return [];
+  if(!str) return [];
+  if(!max) max = 5;
+  var reg =  new RegExp(str);
+  var arr = [];
+  try{
+    
+    dict.filter(function(a){return reg.test(a.zh);}).forEach(function(a){
+      if(arr.length<max) arr.push(a.zh);
+    });
+  }catch(Exception){
+    //
+  }
+  try{
+    dict.filter(function(a){return reg.test(a.en);}).forEach(function(a){
+      if(arr.length<max) arr.push(a.en);
+    });
+  }catch(Exception){
+    //
+  }
+  return arr;
+}
+
+function getWMData(item){
+  if(showWaitMsg)reply(this,"正在获取数据...");
+  if(!item||item==""){
+    reply(this,"*WM查询(Beta)*\n需要指定物品。\n用法：`/wm <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+    return;
+  }
+  item = item.toUpperCase();
+  var wmDict = getSaleDict();
+  var res = getSaleItem(item,wmDict);
+  if(res==false){
+    var o = guess(item,wmDict);
+    if(o.length==0) reply(this,"*WM查询(Beta)*\n查询："+item+"\n没有这条词条。\n用法：`/wm <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+    else{
+      var contents = "*WM查询(Beta)*\n查询："+item+"\n没有这条词条。\n\n您输入的或许是这些中的一个？\n";
+      o.forEach(function(oi){
+        contents+= " + `"+oi+"`\n";
+      });
+      contents+= "\n请使用`/wm [上面内容的完整字符]`命令进行查询，长按上面的字符可以进行复制。";
+      reply(this,contents);
+    }
+    return;
+  }
+  var contents = "*"+res.zh+"*\n";
+  contents+= "英文："+res.en+"\n\n";
+  try{
+    var wmdata = getWMApi(res.search);
+  }catch(Exception){
+    contents+= "WM查询失败。";
+    reply(this,contents);
+    return;
+  }
+  var rd = wmdata.payload.statistics_live['48hours'];
+  contents+="**48小时交易数据**\n\n";
+  var buy_min_price = -1;
+  var buy_max_price = -1;
+  var buy_wa_price = -1;
+  var buy_avg_price = -1;
+  var sell_min_price = -1;
+  var sell_max_price = -1;
+  var sell_wa_price = -1;
+  var sell_avg_price = -1;
+  rd.forEach(function(d){
+    if(d.order_type=="buy"){
+      if(buy_wa_price==-1){
+        buy_wa_price = d.wa_price;
+      }
+      if(buy_avg_price==-1){
+        buy_avg_price = d.avg_price;
+      }
+      if(buy_min_price==-1||buy_min_price>d.min_price){
+        buy_min_price = d.min_price;
+      }
+      if(buy_max_price==-1||buy_max_price<d.max_price){
+        buy_max_price = d.max_price;
+      }
+    }else if(d.order_type=="sell"){
+      if(sell_wa_price==-1){
+        sell_wa_price = d.wa_price;
+      }
+      if(sell_avg_price==-1){
+        sell_avg_price = d.avg_price;
+      }
+      if(sell_min_price==-1||sell_min_price>d.min_price){
+        sell_min_price = d.min_price;
+      }
+      if(sell_max_price==-1||sell_max_price<d.max_price){
+        sell_max_price = d.max_price;
+      }
+    }
+  });
+  
+  contents+= "**购买数据**\n* 最新期望价格："+buy_wa_price+"\n* 最新平均价格："+buy_avg_price+"\n* 48小时最高价格："+buy_max_price+"\n* 48小时最低价格："+buy_min_price+"\n\n";
+  contents+= "**卖出数据**\n* 最新期望价格："+sell_wa_price+"\n* 最新平均价格："+sell_avg_price+"\n* 48小时最高价格："+sell_max_price+"\n* 48小时最低价格："+sell_min_price+"\n\n";
+  contents+= "WM市场链接：["+res.en+" | Warframe Market](https://warframe.market/items/"+res.search+")";
+  reply(this,contents);
+}
