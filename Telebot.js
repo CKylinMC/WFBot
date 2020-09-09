@@ -17,10 +17,10 @@ var utc = 8;
 
 // 数据接口设置，如果其中有失效您可以自行替换。
 var statapi = 'https://api.warframestat.us/pc'; //WF状态API
-var nightwaveDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_NightWave.json"; //夜波词典
-var wfDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Dict.json"; //WF总词典
-var modDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Modifier.json"; //突击强化词典
-var wmDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/master/WF_Sale.json"; //WF可售卖物品词典
+// var nightwaveDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/WFA5/WF_NightWave.json"; //夜波词典
+var wfDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/WFA5/WF_Dict.json"; //WF总词典
+// var modDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/WFA5/WF_Modifier.json"; //突击强化词典
+var wmDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/WFA5/WF_Sale.json"; //WF可售卖物品词典
 var wmapi = "https://api.warframe.market/v1/items/%item%/statistics"; //WM数据接口
 var wmorderapi = "https://api.warframe.market/v1/items/%item%/orders"; //WM数据接口
 var wmitemapi = "https://api.warframe.market/v1/items/%item%"; //WM数据接口
@@ -255,7 +255,11 @@ function getWFBotInfo() {
 //////////////////////////////////////////// 辅助
 
 function getStat(e) {
-    var a = JSON.parse(UrlFetchApp.fetch(statapi).getContentText());
+    var a = JSON.parse(UrlFetchApp.fetch(statapi, {
+        headers: {
+            "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7"
+        }
+    }).getContentText());
     if (a.timestamp) return a;
     reply(e, "获取世界数据时出错，请稍后重试。\n如果持续出现这个问题，请在[Github 项目页面](https://github.com/Cansll/WFBot/issues/new?assignees=&labels=&template=wfbot--------.md&title=%5B%E6%9C%BA%E5%99%A8%E4%BA%BA%E6%95%85%E9%9A%9C%5D)中提交Issue。");
     return {};
@@ -325,39 +329,39 @@ function getCycles() {
 
 //////////////////////////////////////////// 夜波
 
-function getNWDict() {
-    return JSON.parse(UrlFetchApp.fetch(nightwaveDict).getContentText());;
-}
+// function getNWDict() {
+//     return JSON.parse(UrlFetchApp.fetch(nightwaveDict).getContentText());;
+// }
 
-function nwcn(m, dict) {
-    if (m) {
-        if (!dict) dict = getNWDict();
-        //if(dict) var n = dict.filter(function(a){return a.en==m})[0].zh; else var n=m;
-        try {
-            var n = dict.filter(function (a) {
-                return a.en == m
-            })[0].zh;
-        } catch (err) {
-            var n = m;
-        }
-        return n;
-    } else return m;
-}
+// function nwcn(m, dict) {
+//     if (m) {
+//         if (!dict) dict = getNWDict();
+//         //if(dict) var n = dict.filter(function(a){return a.en==m})[0].zh; else var n=m;
+//         try {
+//             var n = dict.filter(function (a) {
+//                 return a.en == m
+//             })[0].zh;
+//         } catch (err) {
+//             var n = m;
+//         }
+//         return n;
+//     } else return m;
+// }
 
 function getNightwaves() {
     if (showWaitMsg) reply(this, "正在获取数据...");
-    var dict = getNWDict();
+    // var dict = getNWDict();
     var data = getStat(this);
     var nwc = data.nightwave.activeChallenges;
     var contents = "*夜波：*";
     if (data.nightwave.active) {
         contents += "\n结束时间：\n" +
-            stampToDate(data.nightwave.expiry) + "\n任务内容："
+            stampToDate(data.nightwave.expiry) + "(" + calc_time_diff(data.nightwave.expiry) + ")" + "\n任务内容："
         nwc.forEach(function (c) {
-            contents += "\n\n+ *" + nwcn(c.title, dict) + "* (" + (c.isDaily ? "每日" : "每周") + (c.isElite ? "精英" : "日常") + ")\n" +
-                nwcn(c.desc, dict) +
+            contents += "\n\n+ *" + c.title + "* (" + (c.isDaily ? "每日" : "每周") + (c.isElite ? "精英" : "日常") + ")\n" +
+                c.desc +
                 "\n*回报：*" + c.reputation +
-                "\n*截止：*" + stampToDate(c.expiry);
+                "\n*截止：*" + calc_time_diff(c.expiry);
         });
     } else
         contents += "未开放。";
@@ -398,7 +402,7 @@ function getVoidTrager() {
     if (vd.active) {
         var inv = vd.inventory;
         contents += "\n\n离开时间：\n" +
-            stampToDate(vd.expiry) +
+            stampToDate(vd.expiry) + "(" + calc_time_diff(vd.expiry) + ")" +
             "\n(" + parseTime(vd.endString) + " 后)";
         contents += "\n\n携带物品：\n\n";
         inv.forEach(function (c) {
@@ -406,7 +410,7 @@ function getVoidTrager() {
         });
     } else {
         contents += "\n\n到达时间：\n" +
-            stampToDate(vd.activation) +
+            stampToDate(vd.activation) + "(" + calc_time_diff(vd.activation) + ")" +
             "\n(" + parseTime(vd.startString) + " 后)";
     }
     reply(this, contents);
@@ -481,14 +485,14 @@ function getSortie() {
     }
 
     var dict = getWFDict();
-    var moddict = getModDict();
+    // var moddict = getModDict();
     var eta = parseTime(sortie.eta);
     var contents = "*每日突击*\n(剩余 " + eta + ")\n\n";
     contents += "阵营：" + sortie.faction + "\n" + "首领：" + cn(sortie.boss, dict) + "\n\n";
     var variants = sortie.variants;
     var counter = 1;
     variants.forEach(function (c) {
-        contents += "*" + sortieNum(counter++) + "*\n" + " - 强化：" + smcn(c.modifier, moddict) + "\n - 节点：" + getNode(c.node, dict) + "\n\n";
+        contents += "*" + sortieNum(counter++) + "*\n" + " - 强化：" + cn(c.modifier, dict) + "\n - 节点：" + getNode(c.node, dict) + "\n\n";
     });
     reply(this, contents);
 }
@@ -594,7 +598,7 @@ function getKuva() {
     var kuva = data.kuva;
     kuva.forEach(function (c) {
         var t = getTimeObj();
-        contents += "*" + getNode(c.node, dict) + " (" + cn(c.type, dict) + ")*\n - 阵营：" + c.enemy + "\n - 结束：" + stampToDate(c.expiry) + "\n" + (c.archwing ? " - *空战任务*" : "") + (c.sharkwing ? " - *水下任务*" : "") + "\n\n";
+        contents += "*" + getNode(c.node, dict) + " (" + cn(c.type, dict) + ")*\n - 阵营：" + c.enemy + "\n - 结束：" + stampToDate(c.expiry) + "(" + calc_time_diff(c.expiry) + ")" + "\n" + (c.archwing ? " - *空战任务*" : "") + (c.sharkwing ? " - *水下任务*" : "") + "\n\n";
     });
     reply(this, contents);
 }
@@ -608,7 +612,7 @@ function getArbitration() {
     var dict = getWFDict();
     var c = data.arbitration;
     //arbitration.forEach(function(c){ 
-    contents += "*" + getNode(c.node, dict) + " (" + cn(c.type, dict) + ")*\n - 阵营：" + c.enemy + "\n - 结束：" + stampToDate(c.expiry) + "\n" + (c.archwing ? " - *空战任务*" : "") + (c.sharkwing ? " - *水下任务*" : "") + "\n\n";
+    contents += "*" + getNode(c.node, dict) + " (" + cn(c.type, dict) + ")*\n - 阵营：" + c.enemy + "\n - 结束：" + stampToDate(c.expiry) + "(" + calc_time_diff(c.expiry) + ")" + "\n" + (c.archwing ? " - *空战任务*" : "") + (c.sharkwing ? " - *水下任务*" : "") + "\n\n";
     //});
     reply(this, contents);
 }
