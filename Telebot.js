@@ -757,8 +757,8 @@ function parseWM(item) {
     }
     var page = res.getContentText();
     var datastr = page.split("<meta name=\"description\" content=\"")[1].split(" | All trading")[0];
-    var price = datastr.split("ce: ")[1].split(" | ")[0];
-    var volume = datastr.split("me: ")[1];
+    var price = datastr.split("ce: ")[1].split(" platinum | ")[0]+" 白金";
+    var volume = datastr.split("me: ")[1].split(" | Get the best trading")[0];
     return "+ *参考价格：*" + price + "\n+ *交易数量：*" + volume;
 }
 
@@ -787,8 +787,8 @@ function getPrice(item) {
     var contents = "*WM查询(Beta)*\n";
     contents += "查询：" + res.zh + "\n";
     contents += "英文：" + res.en + "\n\n";
-    contents += parseWM(res.search);
-    contents += "\n\nWM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.search + ")";
+    contents += parseWM(res.code);
+    contents += "\n\nWM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.code + ")";
     reply(this, contents);
 }
 
@@ -817,7 +817,7 @@ function getWMData(item) {
     var contents = "*WM查询(Beta)*\n查询：" + res.zh + "\n";
     contents += "英文：" + res.en + "\n\n";
     try {
-        var wmdata = getWMApi(res.search);
+        var wmdata = getWMApi(res.code);
     } catch (err) {
         contents += "WM查询失败。";
         reply(this, contents);
@@ -865,7 +865,7 @@ function getWMData(item) {
 
     contents += "**购买数据**\n+ *最新期望价格：*" + buy_wa_price + "\n+ *最新平均价格：*" + buy_avg_price + "\n+ *48小时最高价格：*" + buy_max_price + "\n+ *48小时最低价格：*" + buy_min_price + "\n\n";
     contents += "**卖出数据**\n+ *最新期望价格：*" + sell_wa_price + "\n+ *最新平均价格：*" + sell_avg_price + "\n+ *48小时最高价格：*" + sell_max_price + "\n+ *48小时最低价格：*" + sell_min_price + "\n\n";
-    contents += "WM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.search + ")";
+    contents += "WM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.code + ")";
     reply(this, contents);
 }
 
@@ -894,7 +894,7 @@ function getDrops(item) {
     var contents = "*物品信息查询(Beta)*\n查询：" + res.zh + "\n";
     contents += "英文：" + res.en.toUpperCase() + "\n";
     try {
-        var wmdata = getWMItemApi(res.search);
+        var wmdata = getWMItemApi(res.code);
     } catch (err) {
         contents += "WM查询失败。";
         reply(this, contents);
@@ -932,7 +932,7 @@ function getDrops(item) {
         });
     }
 
-    contents += "\n\nWM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.search + ")";
+    contents += "\n\nWM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.code + ")";
     reply(this, contents);
 
 }
