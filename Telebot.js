@@ -31,7 +31,7 @@ var wmitemapi = "https://api.warframe.market/v1/items/%item%"; //WM数据接口
 // 不影响发布后效果
 var loggerMode = false;
 
-var VERSIONCODE = 151;
+var VERSIONCODE = 172;
 
 // 直接访问时显示的内容，虽然一般情况下不应该出现此情况。
 function doGet() {
@@ -47,7 +47,7 @@ function Dev_TestEntry() {
     Logger.log("[INFO] Started.")
 
     // 测试代码
-    getCycles();
+    getSentient();
 
     Logger.log("[INFO] Stopped.")
 }
@@ -119,6 +119,9 @@ function doPost(e) {
 
         bus.on(/\/invas/, getInvasions);
         bus.on(/\/入侵/, getInvasions);
+
+        bus.on(/\/sentient/, getSentient);
+        bus.on(/\/S船/, getSentient);
 
         bus.on(/\/wm\s*([\sA-Za-z0-9_\u4e00-\u9fa5]+)?/, getWMData);
 
@@ -267,6 +270,7 @@ function getStarted() {
         "/kuva | /赤毒 : 查询当前赤毒任务信息。\n" +
         "/arbit | /仲裁 : 查询当前仲裁任务信息。\n" +
         "/invas | /入侵 : 查询当前入侵任务信息。\n" +
+        "/sentient | /S船 : 查询当前Sentient异常信息。\n" +
         "\n" +
         "/wm <物品> : 查询物品的WM市场价格统计。\n" +
         "/price <物品> : 查询物品的WM价格。\n" +
@@ -726,6 +730,41 @@ function getInvasions() {
         }
     });
     reply(this, contents, minfo!=null?minfo.result.message_id:null);
+}
+
+//////////////////////////////////////////// Sentient
+
+function getSentient() {
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
+    var data = getStat(this);
+    var contenttitle = "*Sentient 异常*\n\n";
+    var contents = ""
+    var dict = getWFDict();
+    var s = data && data.hasOwnProperty('sentientOutposts')?data["sentientOutposts"]:null;
+    if(!s||!s.hasOwnProperty('active')){
+      contents = "没有可以显示的数据。";
+    } else if(s.active!="true"&&s.active!=true){
+      contents = "*当前没有任何 Sentient 异常*";
+    }else{
+      var endtime = calc_time_diff(s.expiry)
+      if(endtime=="已经切换"){
+        contents = "*当前没有任何 Sentient 异常。*\n\n*上一事件：*\n";
+      }else{
+        contents = "*正在发生：*\n"
+        endtime+="后";
+      }
+      contents+= "- 阵营："+s.mission.faction;
+      contents+= "\n- 类型: "+cn(s.mission.type, dict);
+      contents+= "\n- 位置: "+cn(s.mission.node, dict);
+      //contents+= "\n* 类型: "+s.mission.type;
+      //contents+= "\n* 位置: "+s.mission.node;
+      contents+= "\n- 开始: "+stampToDate(s.activation);
+      contents+= "\n- 结束: "+endtime+"  ("+stampToDate(s.expiry)+")";
+    }
+    //if(contents=="")contents = "没有可显示的数据。"
+    //contents = contenttitle+contents;
+    //reply(this, contenttitle+123);
+    reply(this, contenttitle+contents, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// WM数据
