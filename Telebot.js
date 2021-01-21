@@ -1,7 +1,7 @@
 // 请修改以下选项以符合你的要求
 
 // 设置TelegramBot的Token
-var token = 'xxx';
+var token = 'xxxxxxxxxxxxxxxxxx'; // change this
 
 // 有的时候机器人需要收集的数据比较多，相应可能会缓慢。
 // 开启此项可以让机器人收到消息时回复等待消息。
@@ -31,8 +31,11 @@ var wmitemapi = "https://api.warframe.market/v1/items/%item%"; //WM数据接口
 // 不影响发布后效果
 var loggerMode = false;
 
+var VERSIONCODE = 151;
+
 // 直接访问时显示的内容，虽然一般情况下不应该出现此情况。
 function doGet() {
+    setWebhook();
     return HtmlService.createHtmlOutput('<h1>Warframe TG BOT</h1><hr><a target="_blank" href="https://t.me/yorurinbot">@yorurinbot</a>');
 }
 
@@ -49,12 +52,15 @@ function Dev_TestEntry() {
     Logger.log("[INFO] Stopped.")
 }
 
-function reply(e, text) {
+function reply(e, text, mid = null) {
     if (loggerMode) {
         Logger.log("[MSG] " + text);
-        return;
-    } else
-        e.replyToSender(text);
+        return null;
+    } else{
+      if(mid){
+        return e.editMessage(text,mid);
+      }else return e.replyToSender(text);
+    }
 }
 
 function doPost(e) {
@@ -193,6 +199,25 @@ Bot.prototype.request = function (method, data) {
     return false;
 }
 
+Bot.prototype.editMessage = function (text,mid) {
+    if (this.update.message.chat.type == "supergroup") {
+        return this.request('editMessageText', {
+            'chat_id': "@" + this.update.message.chat.username,
+            'message_id':mid,
+            'parse_mode': "Markdown",
+            'reply_to_message_id': this.update.message.chat.id,
+            'text': text
+        });
+    } else {
+        return this.request('editMessageText', {
+            'chat_id': this.update.message.from.id,
+            'message_id':mid,
+            'parse_mode': "Markdown",
+            'text': text
+        });
+    }
+}
+
 Bot.prototype.replyToSender = function (text) {
     if (this.update.message.chat.type == "supergroup") {
         return this.request('sendMessage', {
@@ -213,10 +238,11 @@ Bot.prototype.replyToSender = function (text) {
 function setWebhook() {
     var bot = new Bot(token, {});
     var result = bot.request('setWebhook', {
-        url: ScriptApp.getService().getUrl()
+        url: "https://script.google.com/macros/s/AKfycbzydXaH0MRg1btfvwte3Z8U11C7GPcNWA2PaoZlFCbLZ8Bvy9l7oZO-bQ/exec"
     });
 
     Logger.log(result);
+
 }
 
 function getRandomKey() {
@@ -249,7 +275,7 @@ function getStarted() {
 }
 
 function getWFBotInfo() {
-    reply(this, "*Warframe CN Bot for Telegram*\n作者：CKylinMC\n开源地址：[Cansll/WFBot](https://github.com/Cansll/WFBot) | [更新日志](https://github.com/Cansll/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
+    reply(this, "*Warframe CN Bot for Telegram("+VERSIONCODE+")*\n作者：CKylinMC\n开源地址：[Cansll/WFBot](https://github.com/Cansll/WFBot) | [更新日志](https://github.com/Cansll/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
 }
 
 //////////////////////////////////////////// 辅助
@@ -307,7 +333,7 @@ function cn(m, dict) {
 //////////////////////////////////////////// 平原信息
 
 function getCycles() {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
     var msg = "时间播报:\n\n" +
         "查询时间：\n" +
@@ -324,7 +350,7 @@ function getCycles() {
         "*魔胎之境*\n" +
         "- 当前：" + (data.cambionCycle.active === "fass" ? "FASS" : "VOME") + "\n" +
         "- 过期时间：" + calc_time_diff(data.cambionCycle.expiry) + "\n\n";
-    reply(this, msg);
+    reply(this, msg, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// 夜波
@@ -349,7 +375,7 @@ function getCycles() {
 // }
 
 function getNightwaves() {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     // var dict = getNWDict();
     var data = getStat(this);
     var nwc = data.nightwave.activeChallenges;
@@ -366,7 +392,7 @@ function getNightwaves() {
     } else
         contents += "未开放。";
 
-    reply(this, contents);
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// 奸商
@@ -380,20 +406,21 @@ function getVTPoint(p, dict) {
     var m = r.exec(p);
     if (m) {
         if (!dict) dict = getWFDict();
+        var n;
         //if(dict) var n = dict.filter(function(a){return a.en==m[1]})[0].zh; else var n=m;
         try {
-            var n = dict.filter(function (a) {
+            n = dict.filter(function (a) {
                 return a.en == m[1]
             })[0].zh;
         } catch (err) {
-            var n = m[1];
+            n = m[1];
         }
         return n;
     } else return p;
 }
 
 function getVoidTrager() {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
     var dict = getWFDict();
     var vd = data.voidTrader
@@ -410,10 +437,10 @@ function getVoidTrager() {
         });
     } else {
         contents += "\n\n到达时间：\n" +
-            stampToDate(vd.activation) + "(" + calc_time_diff(vd.activation) + ")" +
+            stampToDate(vd.activation) /* + "(" + calc_time_diff(vd.activation) + ")"*/ +
             "\n(" + parseTime(vd.startString) + " 后)";
     }
-    reply(this, contents);
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// 突击
@@ -457,34 +484,43 @@ function smcn(m, dict) {
 }
 
 function getNode(p, dict) {
-    var r = /^.+?\((.+?)\).*$/;
+  return p;
+  // Official translations available now.
+  /*  var r = /^.+?\((.+?)\).*$/;
     var m = r.exec(p);
     if (m) {
         if (!dict) dict = getWFDict();
+        var n;
         //if(dict) var n = dict.filter(function(a){return a.en==m[1]})[0].zh; else var n=m;
         try {
-            var n = dict.filter(function (a) {
+            n = dict.filter(function (a) {
                 return a.en == m[1]
             })[0].zh;
         } catch (err) {
-            var n = m;
+            n = m;
         }
+        console.log(1,n);
+        console.log(2,m);
+        console.log(3,n + "|||" + p.split(" (")[0])
+        console.log(4,m[0] + "|||" + p.split(" (")[0])
+        console.log(5,p)
         if (n) return n + " " + p.split(" (")[0];
         else return m[1] + " " + p.split(" (")[0];
     } else return p;
+    */
 }
 
 function getSortie() {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
     var sortie = data.sortie;
 
     if (sortie.active != true) {
-        reply(this, "突击尚未开启。");
+        reply(this, "突击尚未开启。", minfo!=null?minfo.result.message_id:null);
         return;
     }
-
-    var dict = getWFDict();
+    var dict = null;
+    //var dict = getWFDict();
     // var moddict = getModDict();
     var eta = parseTime(sortie.eta);
     var contents = "*每日突击*\n(剩余 " + eta + ")\n\n";
@@ -494,7 +530,7 @@ function getSortie() {
     variants.forEach(function (c) {
         contents += "*" + sortieNum(counter++) + "*\n" + " - 强化：" + cn(c.modifier, dict) + "\n - 节点：" + getNode(c.node, dict) + "\n\n";
     });
-    reply(this, contents);
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// 裂缝
@@ -505,69 +541,102 @@ function getTier(i) {
         case "Lith":
         case 1:
         case "1":
-            t += "古";
+            t += "古纪";
             break;
         case "Meso":
         case 2:
         case "2":
-            t += "前";
+            t += "前纪";
             break;
         case "Neo":
         case 3:
         case "3":
-            t += "中";
+            t += "中纪";
             break;
         case "Axi":
         case 4:
         case "4":
-            t += "后";
+            t += "后纪";
+            break;
+        case 5:
+        case "5":
+            t += "安魂";
             break;
         default:
-            t += "?";
+            t += "未知";
     }
-    return t + "纪";
+    return t;
 }
 
 function getFissures() {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
     var contents = "*虚空裂缝*\n\n";
-    var dict = getWFDict();
+    var dict = null;
+    //var dict = getWFDict();
     var fis = data.fissures;
     fis.forEach(function (c) {
         contents += "*(" + getTier(c.tierNum) + ") " + getNode(c.node, dict) + "*\n - 阵营：" + c.enemy + "\n - 任务：" + cn(c.missionType, dict) + "\n - 剩余：" + parseTime(c.eta) + "\n\n";
     });
-    reply(this, contents);
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// 建造进度
 
-function progressToStr(progress, step, filled, unfilled) {
-    if (!step) step = 5;
-    if (!filled) filled = "|";
-    if (!unfilled) unfilled = " ";
-    if (progress < 0) progress = 0;
-    if (progress > 100) progress = 100;
-    progress = Math.floor(progress);
-    var bar = "";
-    var max = 100 / step;
-    while (progress > 0) {
-        progress -= step;
-        bar += filled;
+/*
+ * A improved progress-to-str method
+ */
+function progressToStrIm(progress) {
+  let fullfilled = ":";
+  let halffilled = ".";
+  let zerofilled = " ";
+  let leftborder = "[";
+  let rightborder= "]";
+
+  let str = "";
+
+  if(progress<0) progress = 0;
+  if(progress>100) progress = 100;
+  let pcounts = progress/2;
+
+  str+=leftborder;
+
+  let singlenum = false;
+
+  for(var i=1;i<=50;i++){
+    if(i<=pcounts){
+      if(i%2){
+        singlenum = true;
+      }else{
+        if(singlenum){
+          singlenum = false;
+          str+=fullfilled;
+        }else{
+          singlenum = false;
+          str+=halffilled;
+        }
+      }
+    }else{
+      if(singlenum){
+        singlenum = false;
+        str+=halffilled;
+      }else{
+        if(str.length<26) str+=zerofilled;
+      }
     }
-    var uf = max - bar.length;
-    for (i = 0; i < uf; i++) {
-        bar += unfilled;
-    }
-    return bar;
+  }
+
+  str+=rightborder;
+
+  return str
 }
 
 function getConProgress() {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
     var contents = "*建造进度*\n\n";
-    contents += "*巨人战舰*\n进度：{" + progressToStr(data.constructionProgress.fomorianProgress) + "} " + data.constructionProgress.fomorianProgress + "%\n\n*利刃豺狼*\n进度：{" + progressToStr(data.constructionProgress.razorbackProgress) + "} " + data.constructionProgress.razorbackProgress + "%";
-    reply(this, contents);
+    contents += "*巨人战舰*\n进度：{" + progressToStrIm(data.constructionProgress.fomorianProgress) + "} " + data.constructionProgress.fomorianProgress + "%\n\n*利刃豺狼*\n进度：{" + progressToStrIm(data.constructionProgress.razorbackProgress) + "} " + data.constructionProgress.razorbackProgress + "%";
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// Darvo
@@ -577,50 +646,53 @@ function toPercent(num, total) {
 }
 
 function getDarvo() {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
     var contents = "*每日优惠*\n\n";
     var dict = getWFDict();
     var dd = data.dailyDeals;
     dd.forEach(function (c) {
-        contents += "*" + cn(c.item, dict) + "*\n - 售价：*" + c.salePrice + "*(原价 " + c.originalPrice + "," + c.discount + "%折扣)\n - 售出：{" + progressToStr(toPercent(c.sold, c.total)) + "}" + c.sold + "/" + c.total + "\n - 剩余：" + (c.total - c.sold) + "\n - 刷新：" + parseTime(c.eta) + "后";
+        contents += "*" + cn(c.item, dict) + "*\n - 售价：*" + c.salePrice + "*(原价 " + c.originalPrice + "," + c.discount + "%折扣)\n - 售出：{" + progressToStrIm(toPercent(c.sold, c.total)) + "}   " + c.sold + "/" + c.total + "\n - 剩余：" + (c.total - c.sold) + "\n - 刷新：" + parseTime(c.eta) + "后";
     });
-    reply(this, contents);
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// Kuva
 
 function getKuva() {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
-    var contents = "*赤毒任务*\n\n";
+    var contenttitle = "*赤毒任务*\n\n";
+    var contents = ""
     var dict = getWFDict();
     var kuva = data.kuva;
     kuva.forEach(function (c) {
         var t = getTimeObj();
         contents += "*" + getNode(c.node, dict) + " (" + cn(c.type, dict) + ")*\n - 阵营：" + c.enemy + "\n - 结束：" + stampToDate(c.expiry) + "(" + calc_time_diff(c.expiry) + ")" + "\n" + (c.archwing ? " - *空战任务*" : "") + (c.sharkwing ? " - *水下任务*" : "") + "\n\n";
     });
-    reply(this, contents);
+    if(contents=="")contents = "没有可显示的数据。"
+    contents = contenttitle+contents;
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// arbitration
 
 function getArbitration() {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
     var contents = "*仲裁任务*\n\n";
     var dict = getWFDict();
     var c = data.arbitration;
     //arbitration.forEach(function(c){ 
-    contents += "*" + getNode(c.node, dict) + " (" + cn(c.type, dict) + ")*\n - 阵营：" + c.enemy + "\n - 结束：" + stampToDate(c.expiry) + "(" + calc_time_diff(c.expiry) + ")" + "\n" + (c.archwing ? " - *空战任务*" : "") + (c.sharkwing ? " - *水下任务*" : "") + "\n\n";
+    contents += "*" + getNode(c.node, dict) + " (" + cn(c.type, dict) + ")*\n - 阵营：" + (typeof(c.enemy)==="undefined"?"无阵营或多阵营":c.enemy) + "\n - 结束：" + stampToDate(c.expiry) + "(" + calc_time_diff(c.expiry) + ")" + "\n" + (c.archwing ? " - *空战任务*" : "") + (c.sharkwing ? " - *水下任务*" : "") + "\n\n";
     //});
-    reply(this, contents);
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// Invasions
 
 function getInvasions() {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
     var contents = "*入侵任务*\n\n";
     var dict = getWFDict();
@@ -630,7 +702,7 @@ function getInvasions() {
         if (!c.completed) {
             contents += "*" + c.attackingFaction + " VS " + c.defendingFaction + "* " + (c.vsInfestation ? "(Infestation入侵)" : "") + "\n" +
                 " - 节点：" + getNode(c.node, dict) + "\n" +
-                " - 进度：{" + progressToStr(c.completion) + "}\n" +
+                " - 进度：{" + progressToStrIm(c.completion) + "}\n" +
                 " - 剩余：" + parseTime(c.eta) + "\n";
             if (c.vsInfestation) {
                 contents += " - 防守奖励：" + "\n";
@@ -653,7 +725,7 @@ function getInvasions() {
             contents += "\n";
         }
     });
-    reply(this, contents);
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// WM数据
@@ -763,9 +835,9 @@ function parseWM(item) {
 }
 
 function getPrice(item) {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     if (!item || item == "") {
-        reply(this, "*WM查询(Beta)*\n需要指定物品。\n用法：`/price <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+        reply(this, "*WM查询(Beta)*\n需要指定物品。\n用法：`/price <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS", minfo!=null?minfo.result.message_id:null);
         return;
     }
     item = item.toUpperCase();
@@ -773,14 +845,14 @@ function getPrice(item) {
     var res = getSaleItem(item, wmDict);
     if (res == false) {
         var o = guess(item, wmDict);
-        if (o.length == 0) reply(this, "*WM查询(Beta)*\n查询：" + item + "\n没有这条词条。\n用法：`/price <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+        if (o.length == 0) reply(this, "*WM查询(Beta)*\n查询：" + item + "\n没有这条词条。\n用法：`/price <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS", minfo!=null?minfo.result.message_id:null);
         else {
             var contents = "*WM查询(Beta)*\n查询：" + item + "\n没有这条词条。\n\n您输入的或许是这些中的一个？\n";
             o.forEach(function (oi) {
                 contents += " + `" + oi + "`\n";
             });
             contents += "\n请使用`/price [上面内容的完整字符]`命令进行查询，长按上面的字符可以进行复制。";
-            reply(this, contents);
+            reply(this, contents, minfo!=null?minfo.result.message_id:null);
         }
         return;
     }
@@ -789,13 +861,13 @@ function getPrice(item) {
     contents += "英文：" + res.en + "\n\n";
     contents += parseWM(res.code);
     contents += "\n\nWM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.code + ")";
-    reply(this, contents);
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
 function getWMData(item) {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     if (!item || item == "") {
-        reply(this, "*WM查询(Beta)*\n需要指定物品。\n用法：`/wm <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+        reply(this, "*WM查询(Beta)*\n需要指定物品。\n用法：`/wm <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS", minfo!=null?minfo.result.message_id:null);
         return;
     }
     item = item.toUpperCase();
@@ -803,14 +875,14 @@ function getWMData(item) {
     var res = getSaleItem(item, wmDict);
     if (res == false) {
         var o = guess(item, wmDict);
-        if (o.length == 0) reply(this, "*WM查询(Beta)*\n查询：" + item + "\n没有这条词条。\n用法：`/wm <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+        if (o.length == 0) reply(this, "*WM查询(Beta)*\n查询：" + item + "\n没有这条词条。\n用法：`/wm <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS", minfo!=null?minfo.result.message_id:null);
         else {
             var contents = "*WM查询(Beta)*\n查询：" + item + "\n没有这条词条。\n\n您输入的或许是这些中的一个？\n";
             o.forEach(function (oi) {
                 contents += " + `" + oi + "`\n";
             });
             contents += "\n请使用`/wm [上面内容的完整字符]`命令进行查询，长按上面的字符可以进行复制。";
-            reply(this, contents);
+            reply(this, contents, minfo!=null?minfo.result.message_id:null);
         }
         return;
     }
@@ -820,7 +892,7 @@ function getWMData(item) {
         var wmdata = getWMApi(res.code);
     } catch (err) {
         contents += "WM查询失败。";
-        reply(this, contents);
+        reply(this, contents, minfo!=null?minfo.result.message_id:null);
         return;
     }
     var rd = wmdata.payload.statistics_live['48hours'];
@@ -866,13 +938,13 @@ function getWMData(item) {
     contents += "**购买数据**\n+ *最新期望价格：*" + buy_wa_price + "\n+ *最新平均价格：*" + buy_avg_price + "\n+ *48小时最高价格：*" + buy_max_price + "\n+ *48小时最低价格：*" + buy_min_price + "\n\n";
     contents += "**卖出数据**\n+ *最新期望价格：*" + sell_wa_price + "\n+ *最新平均价格：*" + sell_avg_price + "\n+ *48小时最高价格：*" + sell_max_price + "\n+ *48小时最低价格：*" + sell_min_price + "\n\n";
     contents += "WM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.code + ")";
-    reply(this, contents);
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
 function getDrops(item) {
-    if (showWaitMsg) reply(this, "正在获取数据...");
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     if (!item || item == "") {
-        reply(this, "*掉落查询(Beta)*\n需要指定物品。\n用法：`/drop <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+        reply(this, "*掉落查询(Beta)*\n需要指定物品。\n用法：`/drop <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS", minfo!=null?minfo.result.message_id:null);
         return;
     }
     item = item.toUpperCase();
@@ -880,14 +952,14 @@ function getDrops(item) {
     var res = getSaleItem(item, wmDict);
     if (res == false) {
         var o = guess(item, wmDict);
-        if (o.length == 0) reply(this, "*物品信息查询(Beta)*\n查询：" + item + "\n没有这条词条(-1)。\n用法：`/drop <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS");
+        if (o.length == 0) reply(this, "*物品信息查询(Beta)*\n查询：" + item + "\n没有这条词条(-1)。\n用法：`/drop <物品>`\n请注意查询格式，例如AshP的机体应该如此查询:\n中文：ASH PRIME 机体\n英文：ASH PRIME CHASSIS", minfo!=null?minfo.result.message_id:null);
         else {
             var contents = "*物品信息查询(Beta)*\n查询：" + item + "\n没有这条词条(-2)。\n\n您输入的或许是这些中的一个？\n";
             o.forEach(function (oi) {
                 contents += " + `" + oi + "`\n";
             });
             contents += "\n请使用`/drop [上面内容的完整字符]`命令进行查询，长按上面的字符可以进行复制。";
-            reply(this, contents);
+            reply(this, contents, minfo!=null?minfo.result.message_id:null);
         }
         return;
     }
@@ -897,7 +969,7 @@ function getDrops(item) {
         var wmdata = getWMItemApi(res.code);
     } catch (err) {
         contents += "WM查询失败。";
-        reply(this, contents);
+        reply(this, contents, minfo!=null?minfo.result.message_id:null);
         return;
     }
     var wantedData = res.en.toUpperCase();
@@ -933,7 +1005,7 @@ function getDrops(item) {
     }
 
     contents += "\n\nWM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.code + ")";
-    reply(this, contents);
+    reply(this, contents, minfo!=null?minfo.result.message_id:null);
 
 }
 
