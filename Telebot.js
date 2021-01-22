@@ -15,8 +15,12 @@ var usetimezone = true;
 // UTC+? (默认：Asia/Shanghai UTC+8)
 var utc = 8;
 
+// 默认查询平台。此字串将拼接到地址中，请勿乱填。
+// "pc" "ps4" "xb1" "swi"
+var defaultPlatform = "pc";
+
 // 数据接口设置，如果其中有失效您可以自行替换。
-var statapi = 'https://api.warframestat.us/pc'; //WF状态API
+var statapi = 'https://api.warframestat.us/'; //WF状态API
 // var nightwaveDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/WFA5/WF_NightWave.json"; //夜波词典
 var wfDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/WFA5/WF_Dict.json"; //WF总词典
 // var modDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/WFA5/WF_Modifier.json"; //突击强化词典
@@ -31,7 +35,7 @@ var wmitemapi = "https://api.warframe.market/v1/items/%item%"; //WM数据接口
 // 不影响发布后效果
 var loggerMode = false;
 
-var VERSIONCODE = 173;
+var VERSIONCODE = 185;
 
 // 直接访问时显示的内容，虽然一般情况下不应该出现此情况。
 function doGet() {
@@ -39,28 +43,54 @@ function doGet() {
     return HtmlService.createHtmlOutput('<h1>Warframe TG BOT</h1><hr><a target="_blank" href="https://t.me/yorurinbot">@yorurinbot</a>');
 }
 
-//////////////////////////////////////////// 不要修改下面的内容
-
-// 测试用函数
+// 测试用函数, 需要在控制台预览输出的时候可以使用
 function Dev_TestEntry() {
     loggerMode = true;
     Logger.log("[INFO] Started.")
 
     // 测试代码
-    getBuff();
+    getDarvo();
+    Logger.log(PropertiesService.getScriptProperties().getProperty("platform#@ckylinmc"))
 
     Logger.log("[INFO] Stopped.")
 }
 
-function reply(e, text, mid = null) {
+//////////////////////////////////////////// 不要修改下面的内容
+
+var config = {
+  platform: defaultPlatform,
+}
+
+function reply(e, text, mid = null,perventFromGroup = false) {
     if (loggerMode) {
         Logger.log("[MSG] " + text);
         return null;
     } else{
       if(mid){
-        return e.editMessage(text,mid);
-      }else return e.replyToSender(text);
+        return e.editMessage(text,mid,perventFromGroup);
+      }else return e.replyToSender(text,perventFromGroup);
     }
+}
+
+function loadCustomSettings(e){
+  if(loggerMode) return;
+  var chat_id = "";
+  if(e.update.message.chat.type == "supergroup"){
+    chat_id = "@" + e.update.message.chat.username
+  }else{
+    chat_id = e.update.message.from.id
+  }
+  var prop = PropertiesService.getScriptProperties()
+  
+  var platform_key = "platform#"+chat_id;
+  var customPlatform = prop.getProperty(platform_key);
+  if(customPlatform==null) config.platform = defaultPlatform;
+  else config.platform = customPlatform;
+
+  if(!["pc","ps4","xb1","swi"].includes(config.platform)){
+    e.replyToSender("你的平台字符串设置有误，已经重置为 PC 平台");
+    config.platform = "pc";
+  }
 }
 
 function doPost(e) {
@@ -133,6 +163,9 @@ function doPost(e) {
 
         bus.on(/\/drop\s*([\sA-Za-z0-9_\u4e00-\u9fa5]+)?/, getDrops);
 
+        bus.on(/\/setplatform\s*([\sA-Za-z0-9_\u4e00-\u9fa5]+)?/, changePlatform);
+        bus.on(/\/getplatform/, getYourPlatform);
+
         bot.register(bus);
 
         // 执行处理
@@ -154,6 +187,7 @@ Bot.prototype.register = function (handler) {
 }
 
 Bot.prototype.process = function () {
+    loadCustomSettings(this);
     for (var i in this.handlers) {
         var event = this.handlers[i];
         var result = event.condition(this);
@@ -186,7 +220,7 @@ CommandBus.prototype.handle = function (bot) {
             return cmd.callback.apply(bot, tokens.splice(1));
         }
     }
-    return bot.replyToSender("未知命令，尝试输入 /help 获得可使用的命令列表。");
+    return bot.replyToSender("未知命令，尝试输入 /help 获得可使用的命令列表。",true);
 }
 
 Bot.prototype.request = function (method, data) {
@@ -206,8 +240,9 @@ Bot.prototype.request = function (method, data) {
     return false;
 }
 
-Bot.prototype.editMessage = function (text,mid) {
+Bot.prototype.editMessage = function (text,mid,perventFromGroup = false) {
     if (this.update.message.chat.type == "supergroup") {
+        if(perventFromGroup) return null;
         return this.request('editMessageText', {
             'chat_id': "@" + this.update.message.chat.username,
             'message_id':mid,
@@ -225,8 +260,9 @@ Bot.prototype.editMessage = function (text,mid) {
     }
 }
 
-Bot.prototype.replyToSender = function (text) {
+Bot.prototype.replyToSender = function (text,perventFromGroup = false) {
     if (this.update.message.chat.type == "supergroup") {
+        if(perventFromGroup) return null;
         return this.request('sendMessage', {
             'chat_id': "@" + this.update.message.chat.username,
             'parse_mode': "Markdown",
@@ -262,6 +298,7 @@ function getStarted() {
         "*欢迎使用 Warframe 信息查询BOT！*\n\n" +
         "用法：\n" +
         "/help | /帮助 : 查询帮助(此消息)。\n" +
+        "(群组中请使用 /wfhelp 查询。)\n" +
         "/time | /时间播报 : 查询平原和地球的时间和气候。\n" +
         "/wfbotinfo : 查询机器人信息。\n" +
         "\n" +
@@ -279,12 +316,61 @@ function getStarted() {
         "\n" +
         "/wm <物品> : 查询物品的WM市场价格统计。\n" +
         "/price <物品> : 查询物品的WM价格。\n" +
-        "/drop <物品> : 查询物品的掉落信息。\n"
+        "/drop <物品> : 查询物品的掉落信息。\n" +
+        "\n" +
+        "/setplatform <pc|xb1|ps4|swi> : 修改在bot向你服务时查询的平台。\n"+
+        "/getplatform : 查看当前bot向你服务时查询的平台。\n"
     );
+}
+
+function setPlatform(context,platform = "pc"){
+  if(!["pc","ps4","xb1","swi"].includes(platform)){
+    return false;
+  }
+  var chat_id = "";
+  if(context.update.message.chat.type == "supergroup"){
+    chat_id = "@" + context.update.message.chat.username
+  }else{
+    chat_id = context.update.message.from.id
+  }
+  var prop = PropertiesService.getScriptProperties()
+  
+  var platform_key = "platform#"+chat_id;
+  prop.setProperty(platform_key,platform);
+  return true;
+}
+
+function getCurrentPlatform(){
+  return "`"+config.platform.toUpperCase()+"平台` ";
+}
+
+function changePlatform(pl){
+  var cpl = pl.trim().toLowerCase();
+  if(setPlatform(this,cpl)){
+    reply(this,"修改平台成功："+cpl.toUpperCase()+"\n下次查询开始将提供此平台信息。");
+  }else{
+    reply(this,"命令：/setplatform <pc|ps4|xb1|swi> 切换平台。\n请注意不支持其他参数。\n当前平台："+getCurrentPlatform());
+  }
+}
+
+function getYourName(context){
+  if(context.update.message.chat.type == "supergroup"){
+    return " "+"@" + context.update.message.chat.username+" "
+  }else{
+    return "你"
+  }
+}
+
+function getYourPlatform(){
+    reply(this,"当前向"+getYourName(this)+"提供信息的平台："+getCurrentPlatform()+"\n使用命令：/setplatform <pc|ps4|xb1|swi> 切换平台。");
 }
 
 function getWFBotInfo() {
     reply(this, "*Warframe CN Bot for Telegram("+VERSIONCODE+")*\n作者：CKylinMC\n开源地址：[CKylinMC/WFBot](https://github.com/CKylinMC/WFBot) | [更新日志](https://github.com/CKylinMC/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
+}
+
+function getShare() {
+    reply(this, "*Warframe CN Bot for Telegram("+VERSIONCODE+")*\n\n这是一个快速查询WARFRAME(PC)信息的BOT。\n点击 @yorurinbot 立刻开始使用！\n\n作者：CKylinMC\n开源地址：[CKylinMC/WFBot](https://github.com/CKylinMC/WFBot) | [更新日志](https://github.com/CKylinMC/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
 }
 
 //////////////////////////////////////////// 辅助
@@ -292,7 +378,7 @@ function getWFBotInfo() {
 function getStat(e,node="") {
     if(node!=""&&!node.startsWith("/")) node = "/"+node;
     try{
-        var a = JSON.parse(UrlFetchApp.fetch(statapi+node, {
+        var a = JSON.parse(UrlFetchApp.fetch(statapi+config.platform+node, {
             headers: {
                 "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7"
             }
@@ -352,7 +438,7 @@ function cn(m, dict) {
 function getCycles() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
-    var msg = "*时间播报*:\n\n" +
+    var msg = getCurrentPlatform()+"*时间播报*:\n\n" +
         "查询时间：\n" +
         stampToDate(data.timestamp) + "\n\n" +
         "*地球*\n" +
@@ -396,7 +482,7 @@ function getNightwaves() {
     // var dict = getNWDict();
     var data = getStat(this,"nightwave");
     var nwc = data.activeChallenges;
-    var contents = "*午夜电波：*";
+    var contents = getCurrentPlatform()+"*午夜电波：*";
     if (data.active) {
         contents += "\n当前是第 "+data.season+" 季度第 "+data.phase+" 部分";
         contents += "\n开始时间: "+stampToDate(data.activation);
@@ -442,7 +528,7 @@ function getVoidTrager() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var vd = getStat(this,"voidTrader");
     var dict = getWFDict();
-    var contents = "*虚空商人*(" + (vd.active ? "已到达" : "未到达") + ")";
+    var contents = getCurrentPlatform()+"*虚空商人*(" + (vd.active ? "已到达" : "未到达") + ")";
     contents += "\n\n目标节点：" + getVTPoint(vd.location, dict) + "中继站";
     if (vd.active) {
         var inv = vd.inventory;
@@ -498,7 +584,7 @@ function getSortie() {
     var dict = getWFDict();
     // var moddict = getModDict();
     var eta = parseTime(sortie.eta);
-    var contents = "*每日突击*\n(剩余 " + eta + ")\n\n";
+    var contents = getCurrentPlatform()+"*每日突击*\n(剩余 " + eta + ")\n\n";
     contents += "阵营：" + sortie.faction + "\n" + "首领：" + cn(sortie.boss, dict) + "\n\n";
     var variants = sortie.variants;
     var counter = 1;
@@ -546,7 +632,7 @@ function getTier(i) {
 function getFissures() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var fis = getStat(this,"fissures");
-    var contents = "*虚空裂缝*\n\n";
+    var contents = getCurrentPlatform()+"*虚空裂缝*\n\n";
     var dict = getWFDict();
     fis.forEach(function (c) {
         contents += "*(" + getTier(c.tierNum) + ") " + getNode(c.node, dict) + "*\n - 阵营：" + c.enemy + "\n - 任务：" + cn(c.missionType, dict) + "\n - 剩余：" + parseTime(c.eta) + "\n\n";
@@ -607,7 +693,7 @@ function progressToStrIm(progress) {
 function getConProgress() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this,"constructionProgress");
-    var contents = "*建造进度*\n\n";
+    var contents = getCurrentPlatform()+"*建造进度*\n\n";
     contents += "*巨人战舰*\n进度：{" + progressToStrIm(data.fomorianProgress) + "} " + data.fomorianProgress + "%\n\n*利刃豺狼*\n进度：{" + progressToStrIm(data.razorbackProgress) + "} " + data.razorbackProgress + "%";
     reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
@@ -621,7 +707,7 @@ function toPercent(num, total) {
 function getDarvo() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var dd = getStat(this,"dailyDeals");
-    var contents = "*每日优惠*\n\n";
+    var contents = getCurrentPlatform()+"*每日优惠*\n\n";
     var dict = getWFDict();
     dd.forEach(function (c) {
         contents += "*" + cn(c.item, dict) + "*\n - 售价：*" + c.salePrice + "*(原价 " + c.originalPrice + "," + c.discount + "%折扣)\n - 售出：{" + progressToStrIm(toPercent(c.sold, c.total)) + "}   " + c.sold + "/" + c.total + "\n - 剩余：" + (c.total - c.sold) + "\n - 刷新：" + parseTime(c.eta) + "后";
@@ -634,7 +720,7 @@ function getDarvo() {
 function getKuva() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
-    var contenttitle = "*赤毒任务*\n\n";
+    var contenttitle = getCurrentPlatform()+"*赤毒任务*\n\n";
     var contents = ""
     var dict = getWFDict();
     var kuva = data.kuva;
@@ -652,7 +738,7 @@ function getKuva() {
 function getArbitration() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var c = getStat(this,"arbitration");
-    var contents = "*仲裁任务*\n\n";
+    var contents = getCurrentPlatform()+"*仲裁任务*\n\n";
     var dict = getWFDict();
     //arbitration.forEach(function(c){ 
     contents += "*" + getNode(c.node, dict) + " (" + cn(c.type, dict) + ")*\n - 阵营：" + (typeof(c.enemy)==="undefined"?"无阵营或多阵营":c.enemy) + "\n - 结束：" + stampToDate(c.expiry) + "(" + calc_time_diff(c.expiry) + ")" + "\n" + (c.archwing ? " - *空战任务*" : "") + (c.sharkwing ? " - *水下任务*" : "") + "\n\n";
@@ -665,7 +751,7 @@ function getArbitration() {
 function getInvasions() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var Invasions = getStat(this,"invasions");
-    var contents = "*入侵任务*\n\n";
+    var contents = getCurrentPlatform()+"*入侵任务*\n\n";
     var dict = getWFDict();
     var temprw;
     Invasions.forEach(function (c) {
@@ -703,7 +789,7 @@ function getInvasions() {
 function getSentient() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var s = getStat(this,"sentientOutposts");
-    var contenttitle = "*Sentient 异常*\n\n";
+    var contenttitle = getCurrentPlatform()+"*Sentient 异常*\n\n";
     var contents = ""
     var dict = getWFDict();
     if(!s||!s.hasOwnProperty('active')){
@@ -737,7 +823,7 @@ function getSentient() {
 function getBuff() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this,"globalUpgrades");
-    var msg = "*活动加成*\n\n";
+    var msg = getCurrentPlatform()+"*活动加成*\n\n";
     if(data){
       data.forEach((e,i)=>{
         msg+="*[活动 "+(i+1)+" ]* 加成: "+e.upgrade;
@@ -887,6 +973,7 @@ function getPrice(item) {
     contents += "英文：" + res.en + "\n\n";
     contents += parseWM(res.code);
     contents += "\n\nWM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.code + ")";
+    contents += "\n\n请注意此命令暂时只能提供 PC 平台信息。";
     reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
@@ -964,6 +1051,7 @@ function getWMData(item) {
     contents += "**购买数据**\n+ *最新期望价格：*" + buy_wa_price + "\n+ *最新平均价格：*" + buy_avg_price + "\n+ *48小时最高价格：*" + buy_max_price + "\n+ *48小时最低价格：*" + buy_min_price + "\n\n";
     contents += "**卖出数据**\n+ *最新期望价格：*" + sell_wa_price + "\n+ *最新平均价格：*" + sell_avg_price + "\n+ *48小时最高价格：*" + sell_max_price + "\n+ *48小时最低价格：*" + sell_min_price + "\n\n";
     contents += "WM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.code + ")";
+    contents += "\n\n请注意此命令暂时只能提供 PC 平台信息。";
     reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
@@ -1031,6 +1119,7 @@ function getDrops(item) {
     }
 
     contents += "\n\nWM市场链接：[" + res.en + " | Warframe Market](https://warframe.market/items/" + res.code + ")";
+    contents += "\n\n请注意此命令暂时只能提供 PC 平台信息。";
     reply(this, contents, minfo!=null?minfo.result.message_id:null);
 
 }
