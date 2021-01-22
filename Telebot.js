@@ -31,7 +31,7 @@ var wmitemapi = "https://api.warframe.market/v1/items/%item%"; //WM数据接口
 // 不影响发布后效果
 var loggerMode = false;
 
-var VERSIONCODE = 172;
+var VERSIONCODE = 173;
 
 // 直接访问时显示的内容，虽然一般情况下不应该出现此情况。
 function doGet() {
@@ -47,7 +47,7 @@ function Dev_TestEntry() {
     Logger.log("[INFO] Started.")
 
     // 测试代码
-    getSentient();
+    getBuff();
 
     Logger.log("[INFO] Stopped.")
 }
@@ -122,6 +122,10 @@ function doPost(e) {
 
         bus.on(/\/sentient/, getSentient);
         bus.on(/\/S船/, getSentient);
+
+        bus.on(/\/upgrade/, getBuff);
+        bus.on(/\/buff/, getBuff);
+        bus.on(/\/加成/, getBuff);
 
         bus.on(/\/wm\s*([\sA-Za-z0-9_\u4e00-\u9fa5]+)?/, getWMData);
 
@@ -271,6 +275,7 @@ function getStarted() {
         "/arbit | /仲裁 : 查询当前仲裁任务信息。\n" +
         "/invas | /入侵 : 查询当前入侵任务信息。\n" +
         "/sentient | /S船 : 查询当前Sentient异常信息。\n" +
+        "/buff | /加成 : 查询当前全局加成信息。\n" +
         "\n" +
         "/wm <物品> : 查询物品的WM市场价格统计。\n" +
         "/price <物品> : 查询物品的WM价格。\n" +
@@ -279,20 +284,28 @@ function getStarted() {
 }
 
 function getWFBotInfo() {
-    reply(this, "*Warframe CN Bot for Telegram("+VERSIONCODE+")*\n作者：CKylinMC\n开源地址：[Cansll/WFBot](https://github.com/Cansll/WFBot) | [更新日志](https://github.com/Cansll/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
+    reply(this, "*Warframe CN Bot for Telegram("+VERSIONCODE+")*\n作者：CKylinMC\n开源地址：[CKylinMC/WFBot](https://github.com/CKylinMC/WFBot) | [更新日志](https://github.com/CKylinMC/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
 }
 
 //////////////////////////////////////////// 辅助
 
-function getStat(e) {
-    var a = JSON.parse(UrlFetchApp.fetch(statapi, {
-        headers: {
-            "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7"
+function getStat(e,node="") {
+    if(node!=""&&!node.startsWith("/")) node = "/"+node;
+    try{
+        var a = JSON.parse(UrlFetchApp.fetch(statapi+node, {
+            headers: {
+                "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7"
+            }
+        }).getContentText());
+        if (node==""&&a.timestamp) return a;
+        else{
+          if(a&&a!={}&&a.code!=400&&!a.hasOwnProperty("error")) return a;
+          else throw new Error();
         }
-    }).getContentText());
-    if (a.timestamp) return a;
-    reply(e, "获取世界数据时出错，请稍后重试。\n如果持续出现这个问题，请在[Github 项目页面](https://github.com/Cansll/WFBot/issues/new?assignees=&labels=&template=wfbot--------.md&title=%5B%E6%9C%BA%E5%99%A8%E4%BA%BA%E6%95%85%E9%9A%9C%5D)中提交Issue。");
+    }catch(err){
+        reply(e, "获取世界数据时出错，请稍后重试。\n如果持续出现这个问题，请在[Github 项目页面](https://github.com/CKylinMC/WFBot/issues/new?assignees=&labels=&template=wfbot--------.md&title=%5B%E6%9C%BA%E5%99%A8%E4%BA%BA%E6%95%85%E9%9A%9C%5D)中提交Issue。");
     return {};
+    }
 }
 
 function getTimeObj(t) {
@@ -339,7 +352,7 @@ function cn(m, dict) {
 function getCycles() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     var data = getStat(this);
-    var msg = "时间播报:\n\n" +
+    var msg = "*时间播报*:\n\n" +
         "查询时间：\n" +
         stampToDate(data.timestamp) + "\n\n" +
         "*地球*\n" +
@@ -381,12 +394,14 @@ function getCycles() {
 function getNightwaves() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     // var dict = getNWDict();
-    var data = getStat(this);
-    var nwc = data.nightwave.activeChallenges;
-    var contents = "*夜波：*";
-    if (data.nightwave.active) {
+    var data = getStat(this,"nightwave");
+    var nwc = data.activeChallenges;
+    var contents = "*午夜电波：*";
+    if (data.active) {
+        contents += "\n当前是第 "+data.season+" 季度第 "+data.phase+" 部分";
+        contents += "\n开始时间: "+stampToDate(data.activation);
         contents += "\n结束时间：\n" +
-            stampToDate(data.nightwave.expiry) + "(" + calc_time_diff(data.nightwave.expiry) + ")" + "\n任务内容："
+            stampToDate(data.expiry) + "(" + calc_time_diff(data.expiry) + ")" + "\n任务内容："
         nwc.forEach(function (c) {
             contents += "\n\n+ *" + c.title + "* (" + (c.isDaily ? "每日" : "每周") + (c.isElite ? "精英" : "日常") + ")\n" +
                 c.desc +
@@ -394,7 +409,7 @@ function getNightwaves() {
                 "\n*截止：*" + calc_time_diff(c.expiry);
         });
     } else
-        contents += "未开放。";
+        contents += "当前没有开放的午夜电波活动。";
 
     reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
@@ -425,9 +440,8 @@ function getVTPoint(p, dict) {
 
 function getVoidTrager() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
-    var data = getStat(this);
+    var vd = getStat(this,"voidTrader");
     var dict = getWFDict();
-    var vd = data.voidTrader
     var contents = "*虚空商人*(" + (vd.active ? "已到达" : "未到达") + ")";
     contents += "\n\n目标节点：" + getVTPoint(vd.location, dict) + "中继站";
     if (vd.active) {
@@ -449,10 +463,6 @@ function getVoidTrager() {
 
 //////////////////////////////////////////// 突击
 
-function getModDict() {
-    return JSON.parse(UrlFetchApp.fetch(modDict).getContentText());
-}
-
 function sortieNum(i) {
     var t = "突击";
     switch (i) {
@@ -471,60 +481,21 @@ function sortieNum(i) {
     return t;
 }
 
-function smcn(m, dict) {
-    if (m) {
-        if (!dict) dict = getModDict();
-        //if(dict) var n = dict.filter(function(a){return a.en==m})[0].zh; else var n=m;
-        try {
-            var n = dict.filter(function (a) {
-                return a.en == m
-            })[0].zh;
-        } catch (err) {
-            var n = m;
-        }
-        if (n) return n;
-        else return m;
-    } else return m;
-}
-
 function getNode(p, dict) {
   return p;
   // Official translations available now.
-  /*  var r = /^.+?\((.+?)\).*$/;
-    var m = r.exec(p);
-    if (m) {
-        if (!dict) dict = getWFDict();
-        var n;
-        //if(dict) var n = dict.filter(function(a){return a.en==m[1]})[0].zh; else var n=m;
-        try {
-            n = dict.filter(function (a) {
-                return a.en == m[1]
-            })[0].zh;
-        } catch (err) {
-            n = m;
-        }
-        console.log(1,n);
-        console.log(2,m);
-        console.log(3,n + "|||" + p.split(" (")[0])
-        console.log(4,m[0] + "|||" + p.split(" (")[0])
-        console.log(5,p)
-        if (n) return n + " " + p.split(" (")[0];
-        else return m[1] + " " + p.split(" (")[0];
-    } else return p;
-    */
 }
 
 function getSortie() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
-    var data = getStat(this);
-    var sortie = data.sortie;
+    var sortie = getStat(this,"sortie");
 
     if (sortie.active != true) {
         reply(this, "突击尚未开启。", minfo!=null?minfo.result.message_id:null);
         return;
     }
-    var dict = null;
-    //var dict = getWFDict();
+    //var dict = null;
+    var dict = getWFDict();
     // var moddict = getModDict();
     var eta = parseTime(sortie.eta);
     var contents = "*每日突击*\n(剩余 " + eta + ")\n\n";
@@ -574,11 +545,9 @@ function getTier(i) {
 
 function getFissures() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
-    var data = getStat(this);
+    var fis = getStat(this,"fissures");
     var contents = "*虚空裂缝*\n\n";
-    var dict = null;
-    //var dict = getWFDict();
-    var fis = data.fissures;
+    var dict = getWFDict();
     fis.forEach(function (c) {
         contents += "*(" + getTier(c.tierNum) + ") " + getNode(c.node, dict) + "*\n - 阵营：" + c.enemy + "\n - 任务：" + cn(c.missionType, dict) + "\n - 剩余：" + parseTime(c.eta) + "\n\n";
     });
@@ -637,9 +606,9 @@ function progressToStrIm(progress) {
 
 function getConProgress() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
-    var data = getStat(this);
+    var data = getStat(this,"constructionProgress");
     var contents = "*建造进度*\n\n";
-    contents += "*巨人战舰*\n进度：{" + progressToStrIm(data.constructionProgress.fomorianProgress) + "} " + data.constructionProgress.fomorianProgress + "%\n\n*利刃豺狼*\n进度：{" + progressToStrIm(data.constructionProgress.razorbackProgress) + "} " + data.constructionProgress.razorbackProgress + "%";
+    contents += "*巨人战舰*\n进度：{" + progressToStrIm(data.fomorianProgress) + "} " + data.fomorianProgress + "%\n\n*利刃豺狼*\n进度：{" + progressToStrIm(data.razorbackProgress) + "} " + data.razorbackProgress + "%";
     reply(this, contents, minfo!=null?minfo.result.message_id:null);
 }
 
@@ -651,10 +620,9 @@ function toPercent(num, total) {
 
 function getDarvo() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
-    var data = getStat(this);
+    var dd = getStat(this,"dailyDeals");
     var contents = "*每日优惠*\n\n";
     var dict = getWFDict();
-    var dd = data.dailyDeals;
     dd.forEach(function (c) {
         contents += "*" + cn(c.item, dict) + "*\n - 售价：*" + c.salePrice + "*(原价 " + c.originalPrice + "," + c.discount + "%折扣)\n - 售出：{" + progressToStrIm(toPercent(c.sold, c.total)) + "}   " + c.sold + "/" + c.total + "\n - 剩余：" + (c.total - c.sold) + "\n - 刷新：" + parseTime(c.eta) + "后";
     });
@@ -683,10 +651,9 @@ function getKuva() {
 
 function getArbitration() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
-    var data = getStat(this);
+    var c = getStat(this,"arbitration");
     var contents = "*仲裁任务*\n\n";
     var dict = getWFDict();
-    var c = data.arbitration;
     //arbitration.forEach(function(c){ 
     contents += "*" + getNode(c.node, dict) + " (" + cn(c.type, dict) + ")*\n - 阵营：" + (typeof(c.enemy)==="undefined"?"无阵营或多阵营":c.enemy) + "\n - 结束：" + stampToDate(c.expiry) + "(" + calc_time_diff(c.expiry) + ")" + "\n" + (c.archwing ? " - *空战任务*" : "") + (c.sharkwing ? " - *水下任务*" : "") + "\n\n";
     //});
@@ -697,10 +664,9 @@ function getArbitration() {
 
 function getInvasions() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
-    var data = getStat(this);
+    var Invasions = getStat(this,"invasions");
     var contents = "*入侵任务*\n\n";
     var dict = getWFDict();
-    var Invasions = data.invasions;
     var temprw;
     Invasions.forEach(function (c) {
         if (!c.completed) {
@@ -736,11 +702,10 @@ function getInvasions() {
 
 function getSentient() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
-    var data = getStat(this);
+    var s = getStat(this,"sentientOutposts");
     var contenttitle = "*Sentient 异常*\n\n";
     var contents = ""
     var dict = getWFDict();
-    var s = data && data.hasOwnProperty('sentientOutposts')?data["sentientOutposts"]:null;
     if(!s||!s.hasOwnProperty('active')){
       contents = "没有可以显示的数据。";
     } else if(s.active!="true"&&s.active!=true){
@@ -765,6 +730,28 @@ function getSentient() {
     //contents = contenttitle+contents;
     //reply(this, contenttitle+123);
     reply(this, contenttitle+contents, minfo!=null?minfo.result.message_id:null);
+}
+
+//////////////////////////////////////////// 实时加成
+
+function getBuff() {
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
+    var data = getStat(this,"globalUpgrades");
+    var msg = "*活动加成*\n\n";
+    if(data){
+      data.forEach((e,i)=>{
+        msg+="*[活动 "+(i+1)+" ]* 加成: "+e.upgrade;
+        msg+="\n- 是否有效: "+(e.expired?"已经过期":"当前可用")
+        msg+="\n- 效果描述: "+e.upgrade+" "+e.operationSymbol+e.upgradeOperationValue;
+        msg+="\n- 开始时间: "+stampToDate(e.start);
+        msg+="\n- 结束时间: "+stampToDate(e.end);
+        msg+="\n- 剩余时间: "+parseTime(e.eta);
+        msg+="\n\n"
+      })
+    }else{
+      msg+="没有正在进行的全局活动加成。"
+    }
+    reply(this, msg, minfo!=null?minfo.result.message_id:null);
 }
 
 //////////////////////////////////////////// WM数据
