@@ -32,6 +32,33 @@ API来自[WarframeStat.us API](https://api.warframestat.us/pc)，词典来自[Ri
 /getplatform : 查看当前bot向你服务时查询的平台。
 ```
 
+<details>
+<summary>如果需要在BotFather中填写命令列表，请使用这个列表</summary>
+
+```
+help - 查询帮助。
+time - 查询平原和地球的时间和气候。
+wfbotinfo - 查询机器人信息。
+nw - 查询午夜电波任务信息。
+vd  - 查询虚空商人信息。
+sortie - 查询每日突击信息。
+fissures - 查询虚空裂缝信息。
+conprogress - 查询入侵建造进度信息。
+darvo - 查询每日Darvo优惠信息。
+kuva - 查询当前赤毒任务信息。
+arbit - 查询当前仲裁任务信息。
+invas - 查询当前入侵任务信息。
+sentient - 查询当前Sentient异常信息。
+buff - 查询当前全局加成信息。
+wm - <物品> 查询物品的WM市场价格统计。
+price - <物品> 查询物品的WM价格。
+drop - <物品> 查询物品的掉落信息。
+setplatform - <pc|xb1|ps4|swi> 修改在bot向你服务时查询的平台。
+getplatform - 查看当前bot向你服务时查询的平台。
+```
+
+</details>
+
 ## 选项
 
  * [showWaitMsg](https://github.com/Cansll/WFBot/blob/master/Telebot.js#L6) (boolean)
