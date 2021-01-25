@@ -2,6 +2,7 @@
 
 // 设置TelegramBot的Token
 var token = 'xxxxxxxxxxxxxxxxxx'; // change this
+var GAS_ADDR = "https://script.google.com/macros/s/AKfycbzydXaH0MRg1btfvwte3Z8U11C7GPcNWA2PaoZlFCbLZ8Bvy9l7oZO-bQ/exec"; //and this
 
 // 有的时候机器人需要收集的数据比较多，相应可能会缓慢。
 // 开启此项可以让机器人收到消息时回复等待消息。
@@ -49,7 +50,7 @@ function Dev_TestEntry() {
     Logger.log("[INFO] Started.")
 
     // 测试代码
-    getDarvo();
+    // getDarvo();
     Logger.log(PropertiesService.getScriptProperties().getProperty("platform#@ckylinmc"))
 
     Logger.log("[INFO] Stopped.")
@@ -278,10 +279,19 @@ Bot.prototype.replyToSender = function (text,perventFromGroup = false) {
     }
 }
 
+function sendDirectly(target, content){
+  var bot = new Bot(token, {});
+  return bot.request('sendMessage', {
+            'chat_id': target,
+            'parse_mode': "Markdown",
+            'text': content
+        });
+}
+
 function setWebhook() {
     var bot = new Bot(token, {});
     var result = bot.request('setWebhook', {
-        url: "https://script.google.com/macros/s/AKfycbzydXaH0MRg1btfvwte3Z8U11C7GPcNWA2PaoZlFCbLZ8Bvy9l7oZO-bQ/exec"
+        url: GAS_ADDR
     });
 
     Logger.log(result);
@@ -370,7 +380,7 @@ function getWFBotInfo() {
 }
 
 function getShare() {
-    reply(this, "*Warframe CN Bot for Telegram("+VERSIONCODE+")*\n\n这是一个快速查询WARFRAME(PC)信息的BOT。\n点击 @yorurinbot 立刻开始使用！\n\n作者：CKylinMC\n开源地址：[CKylinMC/WFBot](https://github.com/CKylinMC/WFBot) | [更新日志](https://github.com/CKylinMC/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
+    reply(this, "*Warframe CN Bot for Telegram("+VERSIONCODE+")*\n\n这是一个快速查询WARFRAME(PC)信息的BOT。\n点击 t.me/yorurinbot 立刻开始使用！\n\n作者：CKylinMC\n开源地址：[CKylinMC/WFBot](https://github.com/CKylinMC/WFBot) | [更新日志](https://github.com/CKylinMC/WFBot/commits/master)\nAPI接口: [WarframeStat.us](https://docs.warframestat.us/)\n词典: [云乡](https://github.com/Richasy/WFA_Lexicon)");
 }
 
 //////////////////////////////////////////// 辅助
