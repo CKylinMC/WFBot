@@ -2,7 +2,7 @@
 
 // 设置TelegramBot的Token
 var token = 'xxxxxxxxxxxxxxxxxx'; // change this
-var GAS_ADDR = "https://script.google.com/macros/s/AKfycbzydXaH0MRg1btfvwte3Z8U11C7GPcNWA2PaoZlFCbLZ8Bvy9l7oZO-bQ/exec"; //and this
+var GAS_ADDR = "https://script.google.com/macros/s/xxxxxxxxx/exec"; //and this
 
 // 有的时候机器人需要收集的数据比较多，相应可能会缓慢。
 // 开启此项可以让机器人收到消息时回复等待消息。
@@ -29,6 +29,7 @@ var wmDict = "https://raw.githubusercontent.com/Richasy/WFA_Lexicon/WFA5/WF_Sale
 var wmapi = "https://api.warframe.market/v1/items/%item%/statistics"; //WM数据接口
 var wmorderapi = "https://api.warframe.market/v1/items/%item%/orders"; //WM数据接口
 var wmitemapi = "https://api.warframe.market/v1/items/%item%"; //WM数据接口
+var changelogcv = "https://api.bilibili.com/x/article/list/articles?id=24802"; //哔哩哔哩专栏API
 
 // 配置到此为止
 
@@ -36,7 +37,7 @@ var wmitemapi = "https://api.warframe.market/v1/items/%item%"; //WM数据接口
 // 不影响发布后效果
 var loggerMode = false;
 
-var VERSIONCODE = 185;
+var VERSIONCODE = 190;
 
 // 直接访问时显示的内容，虽然一般情况下不应该出现此情况。
 function doGet() {
@@ -157,6 +158,12 @@ function doPost(e) {
         bus.on(/\/upgrade/, getBuff);
         bus.on(/\/buff/, getBuff);
         bus.on(/\/加成/, getBuff);
+
+        bus.on(/\/更新/, getLatestUpdate);
+        bus.on(/\/update/, getLatestUpdate);
+
+        bus.on(/\/历史更新/, getUpdates);
+        bus.on(/\/changelog/, getUpdates);
 
         bus.on(/\/wm\s*([\sA-Za-z0-9_\u4e00-\u9fa5]+)?/, getWMData);
 
@@ -323,6 +330,8 @@ function getStarted() {
         "/invas | /入侵 : 查询当前入侵任务信息。\n" +
         "/sentient | /S船 : 查询当前Sentient异常信息。\n" +
         "/buff | /加成 : 查询当前全局加成信息。\n" +
+        "/update | /更新 : 查询翻译的最新更新日志(PC)。\n" +
+        "/changelog | /历史更新 : 查询翻译的最新的5篇更新日志(PC)。\n" +
         "\n" +
         "/wm <物品> : 查询物品的WM市场价格统计。\n" +
         "/price <物品> : 查询物品的WM价格。\n" +
@@ -846,6 +855,54 @@ function getBuff() {
       })
     }else{
       msg+="没有正在进行的全局活动加成。"
+    }
+    reply(this, msg, minfo!=null?minfo.result.message_id:null);
+}
+
+//////////////////////////////////////////// WF Changelogs 汉化专栏抓取
+
+function getUpdatesAPI(){
+    return JSON.parse(UrlFetchApp.fetch(changelogcv).getContentText());
+}
+
+function alink(text,url){
+  return `[${text}](${url})`;
+}
+
+function getUpdates() {
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
+    var msg = "*近期更新*\n\n翻译提供者：jxtichi012\n感谢翻译人员的无私奉献！\n\n\n"
+    var updatesLog = getUpdatesAPI();
+    if(!updatesLog) msg+= "获取失败。";
+    else{
+      var articles = updatesLog.data.articles;
+      if(!articles||articles.length==0){
+        msg+= "信息获取失败。";
+      }else{
+        var previewtml = "https://www.bilibili.com/read/cv{{id}}"
+        for(var i=articles.length-1;i>=0&&i>=articles.length-6;i--){
+          let currentArticle = articles[i];
+          msg+= "- "+stampToDate(currentArticle.publish_time)+" - "+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))+"\n\n";
+        }
+      }
+    }
+    reply(this, msg, minfo!=null?minfo.result.message_id:null);
+}
+
+function getLatestUpdate(){
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
+    var msg = "*最近更新*\n\n翻译提供者：jxtichi012\n感谢翻译人员的无私奉献！\n\n"
+    var updatesLog = getUpdatesAPI();
+    if(!updatesLog) msg+= "获取失败。";
+    else{
+      var articles = updatesLog.data.articles;
+      if(!articles||articles.length==0){
+        msg+= "信息获取失败。";
+      }else{
+        var previewtml = "https://t.me/iv?url=https%3A%2F%2Fwww.bilibili.com%2Fread%2Fcv{{id}}&rhash=eb0d955d62961a"
+        let currentArticle = articles[articles.length-1];
+        msg+= "- "+stampToDate(currentArticle.publish_time)+" - "+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))
+      }
     }
     reply(this, msg, minfo!=null?minfo.result.message_id:null);
 }
