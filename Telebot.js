@@ -30,6 +30,7 @@ var wmapi = "https://api.warframe.market/v1/items/%item%/statistics"; //WM数据
 var wmorderapi = "https://api.warframe.market/v1/items/%item%/orders"; //WM数据接口
 var wmitemapi = "https://api.warframe.market/v1/items/%item%"; //WM数据接口
 var changelogcv = "https://api.bilibili.com/x/article/list/articles?id=24802"; //哔哩哔哩专栏API
+var wfnewscv = "https://api.bilibili.com/x/article/list/articles?id=68701"; //哔哩哔哩专栏API
 
 // 配置到此为止
 
@@ -37,7 +38,37 @@ var changelogcv = "https://api.bilibili.com/x/article/list/articles?id=24802"; /
 // 不影响发布后效果
 var loggerMode = false;
 
-var VERSIONCODE = 190;
+var VERSIONCODE = 195;
+
+var usages = "*欢迎使用 Warframe 信息查询BOT！*\n\n" +
+        "用法：\n" +
+        "/help | /帮助 : 查询帮助(此消息)。\n" +
+        "(群组中请使用 /wfhelp 查询。)\n" +
+        "/time | /时间播报 : 查询平原和地球的时间和气候。\n" +
+        "/wfbotinfo : 查询机器人信息。\n" +
+        "\n" +
+        "/nw | /午夜电波 : 查询午夜电波任务信息。\n" +
+        "/vd | /虚空商人 : 查询虚空商人信息。\n" +
+        "/sortie | /突击 : 查询每日突击信息。\n" +
+        "/fissures | /裂缝 : 查询虚空裂缝信息。\n" +
+        "/conprogress | /建造进度 : 查询入侵建造进度信息。\n" +
+        "/darvo | /每日优惠 : 查询每日Darvo优惠信息。\n" +
+        "/kuva | /赤毒 : 查询当前赤毒任务信息。\n" +
+        "/arbit | /仲裁 : 查询当前仲裁任务信息。\n" +
+        "/invas | /入侵 : 查询当前入侵任务信息。\n" +
+        "/sentient | /S船 : 查询当前Sentient异常信息。\n" +
+        "/buff | /加成 : 查询当前全局加成信息。\n" +
+        "/update | /更新 : 查询翻译的最新更新日志(PC)。\n" +
+        "/changelog | /历史更新 : 查询翻译的最新的5篇更新日志(PC)。\n" +
+        "/news | /最新新闻 : 查询翻译的最新新闻(PC)。\n" +
+        "/recentnews | /新闻 : 查询翻译的最新的5篇新闻(PC)。\n" +
+        "\n" +
+        "/wm <物品> : 查询物品的WM市场价格统计。\n" +
+        "/price <物品> : 查询物品的WM价格。\n" +
+        "/drop <物品> : 查询物品的掉落信息。\n" +
+        "\n" +
+        "/setplatform <pc|xb1|ps4|swi> : 修改在bot向你服务时查询的平台。\n"+
+        "/getplatform : 查看当前bot向你服务时查询的平台。\n";
 
 // 直接访问时显示的内容，虽然一般情况下不应该出现此情况。
 function doGet() {
@@ -98,7 +129,6 @@ function loadCustomSettings(e){
 function doPost(e) {
     // 自动禁用测试模式
     loggerMode = false;
-
     // 只响应JSON请求
     if (e.postData.type == "application/json") {
 
@@ -113,6 +143,7 @@ function doPost(e) {
 
         bus.on(/\/start/, getStarted);
         bus.on(/\/help/, getStarted);
+        bus.on(/\/wfhelp/, getRealStarted);
         bus.on(/\/帮助/, getStarted);
 
         bus.on(/\/wfbotinfo/, getWFBotInfo);
@@ -164,6 +195,12 @@ function doPost(e) {
 
         bus.on(/\/历史更新/, getUpdates);
         bus.on(/\/changelog/, getUpdates);
+
+        bus.on(/\/最新新闻/, getLatestNews);
+        bus.on(/\/news/, getLatestNews);
+
+        bus.on(/\/新闻/, getNews);
+        bus.on(/\/recentnews/, getNews);
 
         bus.on(/\/wm\s*([\sA-Za-z0-9_\u4e00-\u9fa5]+)?/, getWMData);
 
@@ -311,35 +348,11 @@ function getRandomKey() {
 
 //////////////////////////////////////////// 开始和帮助
 function getStarted() {
-    reply(this,
-        "*欢迎使用 Warframe 信息查询BOT！*\n\n" +
-        "用法：\n" +
-        "/help | /帮助 : 查询帮助(此消息)。\n" +
-        "(群组中请使用 /wfhelp 查询。)\n" +
-        "/time | /时间播报 : 查询平原和地球的时间和气候。\n" +
-        "/wfbotinfo : 查询机器人信息。\n" +
-        "\n" +
-        "/nw | /午夜电波 : 查询午夜电波任务信息。\n" +
-        "/vd | /虚空商人 : 查询虚空商人信息。\n" +
-        "/sortie | /突击 : 查询每日突击信息。\n" +
-        "/fissures | /裂缝 : 查询虚空裂缝信息。\n" +
-        "/conprogress | /建造进度 : 查询入侵建造进度信息。\n" +
-        "/darvo | /每日优惠 : 查询每日Darvo优惠信息。\n" +
-        "/kuva | /赤毒 : 查询当前赤毒任务信息。\n" +
-        "/arbit | /仲裁 : 查询当前仲裁任务信息。\n" +
-        "/invas | /入侵 : 查询当前入侵任务信息。\n" +
-        "/sentient | /S船 : 查询当前Sentient异常信息。\n" +
-        "/buff | /加成 : 查询当前全局加成信息。\n" +
-        "/update | /更新 : 查询翻译的最新更新日志(PC)。\n" +
-        "/changelog | /历史更新 : 查询翻译的最新的5篇更新日志(PC)。\n" +
-        "\n" +
-        "/wm <物品> : 查询物品的WM市场价格统计。\n" +
-        "/price <物品> : 查询物品的WM价格。\n" +
-        "/drop <物品> : 查询物品的掉落信息。\n" +
-        "\n" +
-        "/setplatform <pc|xb1|ps4|swi> : 修改在bot向你服务时查询的平台。\n"+
-        "/getplatform : 查看当前bot向你服务时查询的平台。\n"
-    );
+    if(this.update.message.chat.type != "supergroup") reply(this,usages);
+}
+
+function getRealStarted(){
+    reply(this,usages);
 }
 
 function setPlatform(context,platform = "pc"){
@@ -882,7 +895,7 @@ function getUpdates() {
         var previewtml = "https://www.bilibili.com/read/cv{{id}}"
         for(var i=articles.length-1;i>=0&&i>=articles.length-6;i--){
           let currentArticle = articles[i];
-          msg+= "- "+stampToDate(currentArticle.publish_time)+" - "+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))+"\n\n";
+          msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))+"\n\n";
         }
       }
     }
@@ -901,7 +914,52 @@ function getLatestUpdate(){
       }else{
         var previewtml = "https://t.me/iv?url=https%3A%2F%2Fwww.bilibili.com%2Fread%2Fcv{{id}}&rhash=eb0d955d62961a"
         let currentArticle = articles[articles.length-1];
-        msg+= "- "+stampToDate(currentArticle.publish_time)+" - "+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))
+        msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))
+      }
+    }
+    reply(this, msg, minfo!=null?minfo.result.message_id:null);
+}
+
+//////////////////////////////////////////// WF News 汉化专栏抓取
+
+function getNewsAPI(){
+    return JSON.parse(UrlFetchApp.fetch(wfnewscv).getContentText());
+}
+
+
+function getNews() {
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
+    var msg = "*近期新闻*\n\n翻译提供者：jxtichi012\n感谢翻译人员的无私奉献！\n\n\n"
+    var news = getNewsAPI();
+    if(!news) msg+= "获取失败。";
+    else{
+      var articles = news.data.articles;
+      if(!articles||articles.length==0){
+        msg+= "信息获取失败。";
+      }else{
+        var previewtml = "https://www.bilibili.com/read/cv{{id}}"
+        for(var i=articles.length-1;i>=0&&i>=articles.length-6;i--){
+          let currentArticle = articles[i];
+          msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))+"\n\n";
+        }
+      }
+    }
+    reply(this, msg, minfo!=null?minfo.result.message_id:null);
+}
+
+function getLatestNews(){
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
+    var msg = "*最新新闻*\n\n翻译提供者：jxtichi012\n感谢翻译人员的无私奉献！\n\n"
+    var news = getNewsAPI();
+    if(!news) msg+= "获取失败。";
+    else{
+      var articles = news.data.articles;
+      if(!articles||articles.length==0){
+        msg+= "信息获取失败。";
+      }else{
+        var previewtml = "https://t.me/iv?url=https%3A%2F%2Fwww.bilibili.com%2Fread%2Fcv{{id}}&rhash=eb0d955d62961a"
+        let currentArticle = articles[articles.length-1];
+        msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))
       }
     }
     reply(this, msg, minfo!=null?minfo.result.message_id:null);
