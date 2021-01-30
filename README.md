@@ -23,6 +23,11 @@ API来自[WarframeStat.us API](https://api.warframestat.us/pc)，词典来自[Ri
 /invas | /入侵 : 查询当前入侵任务信息。
 /sentient | /S船 : 查询当前Sentient异常信息。
 /buff | /加成 : 查询当前全局加成信息。
+/simaris | /狩猎 : 查询当前狩猎目标信息。
+/update | /更新 : 查询翻译的最新更新日志(PC)。
+/changelog | /历史更新 : 查询翻译的最新的5篇更新日志(PC)。
+/news | /最新新闻 : 查询翻译的最新新闻(PC)。
+/recentnews | /新闻 : 查询翻译的最新的5篇新闻(PC)。
 
 /wm <物品> : 查询物品的WM市场价格统计。
 /price <物品> : 查询物品的WM价格。
@@ -53,6 +58,11 @@ buff - 查询当前全局加成信息。
 wm - <物品> 查询物品的WM市场价格统计。
 price - <物品> 查询物品的WM价格。
 drop - <物品> 查询物品的掉落信息。
+simaris - 查询当前狩猎目标信息。
+update - 查询翻译的最新更新日志(PC)。
+changelog - 查询翻译的最新的5篇更新日志(PC)。
+news - 查询翻译的最新新闻(PC)。
+recentnews - 查询翻译的最新的5篇新闻(PC)。
 setplatform - <pc|xb1|ps4|swi> 修改在bot向你服务时查询的平台。
 getplatform - 查看当前bot向你服务时查询的平台。
 ```
@@ -84,7 +94,7 @@ getplatform - 查看当前bot向你服务时查询的平台。
 3. 登陆[Google Apps Script](https://script.google.com/home/my)后台，然后点击左边的新建脚本按钮。
 4. 复制[Telebot.js](https://github.com/Cansll/WFBot/raw/master/Telebot.js)的所有内容到GAS。
 5. 修改[Token](https://github.com/Cansll/WFBot/blob/master/Telebot.js#L4)变量内容为你刚刚创建Bot时给你的那一串字符串。
-6. 保存，找到工具条上的选择函数(或显示`myFunction`)，选择`setWebHook`。
-7. 点击左侧三角形按钮运行一次。
-8. 点击发布-部署为网络应用，输入项目名字。期间可能会提示你授权，请跟着提示确认。
+6. 保存，点击发布-部署为网络应用，输入项目名字。期间可能会提示你授权，请跟着提示确认。
+7. 回到编辑器，找到工具条上的选择函数(或显示`myFunction`)，选择`setWebHook`。
+8. 点击左侧三角形按钮运行一次。
 9. 现在可以看看你的bot是不是可以响应你的指令了?
