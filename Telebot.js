@@ -1,8 +1,7 @@
 // 请修改以下选项以符合你的要求
 
 // 设置TelegramBot的Token
-var token = 'xxxxxxxxxxxxxxxxxx'; // change this
-var GAS_ADDR = "https://script.google.com/macros/s/xxxxxxxxx/exec"; //and this
+var token = 'xxxxxxxxxxxxxxxxxx'; // 必须修改
 
 // 有的时候机器人需要收集的数据比较多，相应可能会缓慢。
 // 开启此项可以让机器人收到消息时回复等待消息。
@@ -38,7 +37,7 @@ var wfnewscv = "https://api.bilibili.com/x/article/list/articles?id=68701"; //�
 // 不影响发布后效果
 var loggerMode = false;
 
-var VERSIONCODE = 195;
+var VERSIONCODE = 201;
 
 var usages = "*欢迎使用 Warframe 信息查询BOT！*\n\n" +
         "用法：\n" +
@@ -58,6 +57,7 @@ var usages = "*欢迎使用 Warframe 信息查询BOT！*\n\n" +
         "/invas | /入侵 : 查询当前入侵任务信息。\n" +
         "/sentient | /S船 : 查询当前Sentient异常信息。\n" +
         "/buff | /加成 : 查询当前全局加成信息。\n" +
+        "/simaris | /狩猎 : 查询当前狩猎目标信息。\n" +
         "/update | /更新 : 查询翻译的最新更新日志(PC)。\n" +
         "/changelog | /历史更新 : 查询翻译的最新的5篇更新日志(PC)。\n" +
         "/news | /最新新闻 : 查询翻译的最新新闻(PC)。\n" +
@@ -82,8 +82,8 @@ function Dev_TestEntry() {
     Logger.log("[INFO] Started.")
 
     // 测试代码
-    // getDarvo();
-    Logger.log(PropertiesService.getScriptProperties().getProperty("platform#@ckylinmc"))
+
+console.log(ScriptApp.getService().getUrl())
 
     Logger.log("[INFO] Stopped.")
 }
@@ -189,6 +189,9 @@ function doPost(e) {
         bus.on(/\/upgrade/, getBuff);
         bus.on(/\/buff/, getBuff);
         bus.on(/\/加成/, getBuff);
+
+        bus.on(/\/simaris/, getSimarisTarget);
+        bus.on(/\/狩猎/, getSimarisTarget);
 
         bus.on(/\/更新/, getLatestUpdate);
         bus.on(/\/update/, getLatestUpdate);
@@ -335,7 +338,8 @@ function sendDirectly(target, content){
 function setWebhook() {
     var bot = new Bot(token, {});
     var result = bot.request('setWebhook', {
-        url: GAS_ADDR
+        // url: GAS_ADDR
+        url: ScriptApp.getService().getUrl()
     });
 
     Logger.log(result);
@@ -407,7 +411,7 @@ function getShare() {
 
 //////////////////////////////////////////// 辅助
 
-function getStat(e,node="") {
+function getStat(e,node="",ignoreErrors = false) {
     if(node!=""&&!node.startsWith("/")) node = "/"+node;
     try{
         var a = JSON.parse(UrlFetchApp.fetch(statapi+config.platform+node, {
@@ -421,7 +425,7 @@ function getStat(e,node="") {
           else throw new Error();
         }
     }catch(err){
-        reply(e, "获取世界数据时出错，请稍后重试。\n如果持续出现这个问题，请在[Github 项目页面](https://github.com/CKylinMC/WFBot/issues/new?assignees=&labels=&template=wfbot--------.md&title=%5B%E6%9C%BA%E5%99%A8%E4%BA%BA%E6%95%85%E9%9A%9C%5D)中提交Issue。");
+        if(!ignoreErrors) reply(e, "获取世界数据时出错，请稍后重试。\n如果持续出现这个问题，请在[Github 项目页面](https://github.com/CKylinMC/WFBot/issues/new?assignees=&labels=&template=wfbot--------.md&title=%5B%E6%9C%BA%E5%99%A8%E4%BA%BA%E6%95%85%E9%9A%9C%5D)中提交Issue。");
     return {};
     }
 }
@@ -512,7 +516,7 @@ function getCycles() {
 function getNightwaves() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
     // var dict = getNWDict();
-    var data = getStat(this,"nightwave");
+    var data = getStat(this,"nightwave",true);
     var nwc = data.activeChallenges;
     var contents = getCurrentPlatform()+"*午夜电波：*";
     if (data.active) {
@@ -820,7 +824,7 @@ function getInvasions() {
 
 function getSentient() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
-    var s = getStat(this,"sentientOutposts");
+    var s = getStat(this,"sentientOutposts",true);
     var contenttitle = getCurrentPlatform()+"*Sentient 异常*\n\n";
     var contents = ""
     var dict = getWFDict();
@@ -854,7 +858,7 @@ function getSentient() {
 
 function getBuff() {
     var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
-    var data = getStat(this,"globalUpgrades");
+    var data = getStat(this,"globalUpgrades",true);
     var msg = getCurrentPlatform()+"*活动加成*\n\n";
     if(data){
       data.forEach((e,i)=>{
@@ -868,6 +872,21 @@ function getBuff() {
       })
     }else{
       msg+="没有正在进行的全局活动加成。"
+    }
+    reply(this, msg, minfo!=null?minfo.result.message_id:null);
+}
+
+//////////////////////////////////////////// 大黄脸目标
+
+function getSimarisTarget() {
+    var minfo = null;if (showWaitMsg) minfo=reply(this, "正在获取数据...");
+    var data = getStat(this,"simaris",true);
+    var msg = getCurrentPlatform()+"*Simaris 狩猎目标*\n\n";
+    var dict = getWFDict();
+    if(data){
+      msg+= "- "+(data.isTargetActive?"当前":"上一个")+"目标：*`"+cn(data.target,dict)+"`*"
+    }else{
+      msg+="没有正在进行的狩猎目标。"
     }
     reply(this, msg, minfo!=null?minfo.result.message_id:null);
 }
@@ -895,7 +914,7 @@ function getUpdates() {
         var previewtml = "https://www.bilibili.com/read/cv{{id}}"
         for(var i=articles.length-1;i>=0&&i>=articles.length-6;i--){
           let currentArticle = articles[i];
-          msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))+"\n\n";
+          msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))+"\n`"+currentArticle.summary+"`\n\n";
         }
       }
     }
@@ -914,7 +933,7 @@ function getLatestUpdate(){
       }else{
         var previewtml = "https://t.me/iv?url=https%3A%2F%2Fwww.bilibili.com%2Fread%2Fcv{{id}}&rhash=eb0d955d62961a"
         let currentArticle = articles[articles.length-1];
-        msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))
+        msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))+"\n`"+currentArticle.summary+"`";
       }
     }
     reply(this, msg, minfo!=null?minfo.result.message_id:null);
@@ -940,7 +959,7 @@ function getNews() {
         var previewtml = "https://www.bilibili.com/read/cv{{id}}"
         for(var i=articles.length-1;i>=0&&i>=articles.length-6;i--){
           let currentArticle = articles[i];
-          msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))+"\n\n";
+          msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))+"\n`"+currentArticle.summary+"`\n\n";
         }
       }
     }
@@ -959,7 +978,7 @@ function getLatestNews(){
       }else{
         var previewtml = "https://t.me/iv?url=https%3A%2F%2Fwww.bilibili.com%2Fread%2Fcv{{id}}&rhash=eb0d955d62961a"
         let currentArticle = articles[articles.length-1];
-        msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))
+        msg+= "- "+stampToDate(currentArticle.publish_time)+"\n"+ alink(currentArticle.title,(previewtml.replace("{{id}}",currentArticle.id)))+"\n`"+currentArticle.summary+"`";
       }
     }
     reply(this, msg, minfo!=null?minfo.result.message_id:null);
